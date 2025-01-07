@@ -1,8 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,10 +10,17 @@ import (
 )
 
 func main() {
+	// Setup structured logging
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	slog.SetDefault(logger)
+
 	// Create a new client
 	client, err := tvwsclient.NewClient()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to create client", "error", err)
+		os.Exit(1)
 	}
 	defer client.Close()
 
@@ -25,6 +31,7 @@ func main() {
 		"NASDAQ:GOOGL",
 		"NASDAQ:AMZN",
 		"NASDAQ:META",
+		"BINANCE:BTCUSDT",
 	}
 
 	// Setup signal handling
@@ -37,17 +44,19 @@ func main() {
 	// Start receiving data
 	go func() {
 		if err := client.GetLatestTradeInfo(symbols, dataChan); err != nil {
-			log.Printf("Error: %v", err)
+			slog.Error("failed to get trade info", "error", err)
 		}
 	}()
+
+	slog.Info("starting to receive trade data", "symbols", symbols)
 
 	// Main loop
 	for {
 		select {
 		case data := <-dataChan:
-			fmt.Printf("Received: %+v\n", data)
+			slog.Debug("received trade data", "data", data)
 		case <-sigChan:
-			fmt.Println("\nShutting down...")
+			slog.Info("shutting down...")
 			return
 		}
 	}
