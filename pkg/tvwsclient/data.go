@@ -72,13 +72,25 @@ func (c *Client) GetLatestTradeInfo(symbols []string, dataChan chan<- map[string
 		parts := strings.Split(string(message), "~m~")
 		for _, part := range parts {
 			if strings.HasPrefix(part, "{") {
-				var data map[string]interface{}
-				if err := json.Unmarshal([]byte(part), &data); err != nil {
+				var response TVResponse
+				if err := json.Unmarshal([]byte(part), &response); err != nil {
 					continue
 				}
-				// Only forward actual trade data
-				if m, ok := data["m"].(string); ok && m == "qsd" {
-					dataChan <- data
+
+				// Only process quote data messages
+				if response.Method == "qsd" && len(response.Params) >= 2 {
+					// Extract the quote data from params
+					if quoteDataRaw, err := json.Marshal(response.Params[1]); err == nil {
+						var quote QuoteData
+						if err := json.Unmarshal(quoteDataRaw, &quote); err == nil {
+							// Convert to map for compatibility with existing channel
+							dataMap := map[string]interface{}{
+								"m": response.Method,
+								"p": []interface{}{response.Params[0], quote},
+							}
+							dataChan <- dataMap
+						}
+					}
 				}
 			}
 		}

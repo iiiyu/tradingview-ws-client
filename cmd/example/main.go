@@ -54,7 +54,16 @@ func main() {
 	for {
 		select {
 		case data := <-dataChan:
-			slog.Debug("received trade data", "data", data)
+			if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
+				if quote, ok := response[1].(tvwsclient.QuoteData); ok {
+					slog.Info("received trade data",
+						"symbol", quote.Name,
+						"price", quote.Values.LastPrice,
+						"change", quote.Values.Change,
+						"volume", quote.Values.Volume,
+					)
+				}
+			}
 		case <-sigChan:
 			slog.Info("shutting down...")
 			return
