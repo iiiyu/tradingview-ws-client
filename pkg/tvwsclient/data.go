@@ -3,6 +3,7 @@ package tvwsclient
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strings"
 	"time"
@@ -86,10 +87,10 @@ func (c *Client) GetLatestTradeInfo(symbols []string, dataChan chan<- map[string
 
 // generateSession generates a random session ID with the given prefix
 func generateSession(prefix string) string {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyz"
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, 12)
 	for i := range b {
-		b[i] = letterBytes[i%len(letterBytes)]
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return prefix + string(b)
 }
