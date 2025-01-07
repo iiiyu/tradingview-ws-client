@@ -25,7 +25,7 @@ func TestGenerateSession(t *testing.T) {
 			// Generate multiple sessions to test randomness
 			sessions := make(map[string]bool)
 			for i := 0; i < 100; i++ {
-				result := generateSession(tt.prefix)
+				result := GenerateSession(tt.prefix)
 
 				// Test prefix
 				if !regexp.MustCompile("^" + tt.prefix).MatchString(result) {

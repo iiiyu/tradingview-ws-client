@@ -1,8 +1,11 @@
 package tvwsclient
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -13,14 +16,18 @@ type Client struct {
 	requestHeader http.Header
 	wsURL         string
 	validateURL   string
+	authToken     string
 }
 
+var heartbeatRegex = regexp.MustCompile(`~h~\d+`)
+
 // NewClient creates a new TradingView WebSocket client
-func NewClient(options ...Option) (*Client, error) {
+func NewClient(authToken string, options ...Option) (*Client, error) {
 	client := &Client{
 		requestHeader: defaultHeaders(),
 		wsURL:         "wss://data.tradingview.com/socket.io/websocket?from=screener%2F",
 		validateURL:   "https://scanner.tradingview.com/symbol?symbol=%s%%3A%s&fields=market&no_404=false",
+		authToken:     authToken,
 	}
 
 	// Apply options
@@ -35,6 +42,70 @@ func NewClient(options ...Option) (*Client, error) {
 	client.ws = conn
 
 	return client, nil
+}
+
+func (c *Client) SendInitMessage() error {
+	if err := SendSetAuthTokenMessage(c, c.authToken); err != nil {
+		return err
+	}
+
+	if err := SendSetLocalMessage(c); err != nil {
+		return err
+	}
+
+	csSession := GenerateSession("cs_")
+	if err := SendChartCreateSessionMessage(c, csSession); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Client) ReadMessage(dataChan chan<- map[string]interface{}) error {
+	// Read messages in a loop
+	for {
+		_, message, err := c.ws.ReadMessage()
+		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				return nil
+			}
+			return fmt.Errorf("error reading message: %w", err)
+		}
+
+		// Handle heartbeat messages
+		if heartbeatRegex.Match(message) {
+			if err := c.ws.WriteMessage(websocket.TextMessage, message); err != nil {
+				return fmt.Errorf("error sending heartbeat response: %w", err)
+			}
+			continue
+		}
+
+		// Process data messages
+		parts := strings.Split(string(message), "~m~")
+		for _, part := range parts {
+			if strings.HasPrefix(part, "{") {
+				var response TVResponse
+				if err := json.Unmarshal([]byte(part), &response); err != nil {
+					continue
+				}
+
+				// Only process quote data messages
+				if response.Method == "qsd" && len(response.Params) >= 2 {
+					// Extract the quote data from params
+					if quoteDataRaw, err := json.Marshal(response.Params[1]); err == nil {
+						var quote QuoteData
+						if err := json.Unmarshal(quoteDataRaw, &quote); err == nil {
+							// Convert to map for compatibility with existing channel
+							dataMap := map[string]interface{}{
+								"m": response.Method,
+								"p": []interface{}{response.Params[0], quote},
+							}
+							dataChan <- dataMap
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // Close closes the WebSocket connection

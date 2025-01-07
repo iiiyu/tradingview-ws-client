@@ -17,7 +17,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	// Create a new client
-	client, err := tvwsclient.NewClient()
+	client, err := tvwsclient.NewClient("unauthorized_user_token")
 	if err != nil {
 		slog.Error("failed to create client", "error", err)
 		os.Exit(1)
@@ -27,12 +27,9 @@ func main() {
 	// Example symbols
 	symbols := []string{
 		"NASDAQ:AAPL",
-		"NASDAQ:MSFT",
-		"NASDAQ:GOOGL",
-		"NASDAQ:AMZN",
-		"NASDAQ:META",
 		"BINANCE:BTCUSDT",
 	}
+	slog.Info("starting to receive trade data", "symbols", symbols)
 
 	// Setup signal handling
 	sigChan := make(chan os.Signal, 1)
@@ -43,12 +40,23 @@ func main() {
 
 	// Start receiving data
 	go func() {
-		if err := client.GetLatestTradeInfo(symbols, dataChan); err != nil {
+		if err := client.ReadMessage(dataChan); err != nil {
 			slog.Error("failed to get trade info", "error", err)
 		}
 	}()
 
-	slog.Info("starting to receive trade data", "symbols", symbols)
+	go func() {
+		qsSession := tvwsclient.GenerateSession("qs_")
+		if err := tvwsclient.SendQuoteCreateSessionMessage(client, qsSession); err != nil {
+			slog.Error("failed to send quote create session message ", "error", err)
+		}
+		if err := tvwsclient.SendQuoteSetFieldsMessage(client, qsSession); err != nil {
+			slog.Error("failed to send quote set fields session message ", "error", err)
+		}
+		if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
+			slog.Error("failed to send add quote symbols session message ", "error", err)
+		}
+	}()
 
 	// Main loop
 	for {

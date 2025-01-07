@@ -3,15 +3,11 @@ package tvwsclient
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
-
-var heartbeatRegex = regexp.MustCompile(`~h~\d+`)
 
 // GetLatestTradeInfo starts streaming real-time trade information for the given symbols
 func (c *Client) GetLatestTradeInfo(symbols []string, dataChan chan<- map[string]interface{}) error {
@@ -19,7 +15,7 @@ func (c *Client) GetLatestTradeInfo(symbols []string, dataChan chan<- map[string
 	initMessages := []string{
 		`{"m":"set_auth_token","p":["unauthorized_user_token"]}`,
 		`{"m":"set_locale","p":["en","US"]}`,
-		`{"m":"chart_create_session","p":["cs_` + generateSession("") + `",""]}`}
+		`{"m":"chart_create_session","p":["cs_` + GenerateSession("") + `",""]}`}
 
 	// Send initial protocol messages
 	for _, msg := range initMessages {
@@ -33,7 +29,7 @@ func (c *Client) GetLatestTradeInfo(symbols []string, dataChan chan<- map[string
 	time.Sleep(1 * time.Second)
 
 	// Create quote session
-	session := generateSession("qs_")
+	session := GenerateSession("qs_")
 	quoteMessages := []string{
 		fmt.Sprintf(`{"m":"quote_create_session","p":["%s"]}`, session),
 		fmt.Sprintf(`{"m":"quote_set_fields","p":["%s","lp","ch","chp","current_session","description","local_description","language","exchange","fractional","is_tradable","lp_time","minmov","minmove2","original_name","pricescale","pro_name","short_name","type","update_mode","volume","currency_code","rchp","rtc","status"]}`, session),
@@ -95,14 +91,4 @@ func (c *Client) GetLatestTradeInfo(symbols []string, dataChan chan<- map[string
 			}
 		}
 	}
-}
-
-// generateSession generates a random session ID with the given prefix
-func generateSession(prefix string) string {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, 12)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return prefix + string(b)
 }
