@@ -25,7 +25,7 @@ var heartbeatRegex = regexp.MustCompile(`~h~\d+`)
 func NewClient(authToken string, options ...Option) (*Client, error) {
 	client := &Client{
 		requestHeader: defaultHeaders(),
-		wsURL:         "wss://data.tradingview.com/socket.io/websocket?from=screener%2F",
+		wsURL:         "wss://prodata.tradingview.com/socket.io/websocket?from=screener%2F",
 		validateURL:   "https://scanner.tradingview.com/symbol?symbol=%s%%3A%s&fields=market&no_404=false",
 		authToken:     authToken,
 	}

@@ -9,9 +9,11 @@ import (
 )
 
 // Add these fields as a constant since they're used in quote set fields
-const defaultQuoteFields = "lp,ch,chp,current_session,description,local_description,language,exchange," +
-	"fractional,is_tradable,lp_time,minmov,minmove2,original_name,pricescale,pro_name," +
-	"short_name,type,update_mode,volume,currency_code,rchp,rtc,status"
+const defaultQuoteFields = "base-currency-logoid,ch,chp,currency-logoid,currency_code,currency_id," +
+	"base_currency_id,current_session,description,exchange,format,fractional,is_tradable,language," +
+	"local_description,listed_exchange,logoid,lp,lp_time,minmov,minmove2,original_name,pricescale," +
+	"pro_name,short_name,type,typespecs,update_mode,volume,variable_tick_size,value_unit_id," +
+	"unit_id,measure"
 
 // sendWSMessage is a helper function that handles the common pattern of sending websocket messages
 func sendWSMessage(ws *websocket.Conn, message string, operation string) error {
@@ -34,11 +36,28 @@ func SendSetLocalMessage(c *Client) error {
 	return sendWSMessage(c.ws, message, "set local message")
 }
 
+// Chart Messages
 func SendChartCreateSessionMessage(c *Client, session string) error {
 	message := fmt.Sprintf(`{"m":"set_auth_token","p":["%s",""]}`, session)
 	return sendWSMessage(c.ws, message, "chart create session message")
 }
 
+func SendSwitchTimezone(c *Client, session string) error {
+	message := fmt.Sprintf(`{"m":"switch_timezone","p":["%s","Etc/UTC"]}`, session)
+	return sendWSMessage(c.ws, message, "switch timezone message")
+}
+
+func SendResolveSymbol(c *Client, session string, symbol string) error {
+	message := fmt.Sprintf(`{"m":"resolve_symbol","p":["%s","sds_sym_1","={\"adjustment\":\"splits\",\"session\":\"regular\",\"symbol\":\"%s\"}"]}`, session, symbol)
+	return sendWSMessage(c.ws, message, "resolve symbol")
+}
+
+func SendCreateSeries(c *Client, session string, interval string) error {
+	message := fmt.Sprintf(`{"m":"create_series","p":["%s","sds_1","s1","sds_sym_1","%s",300,""]}`, session, interval)
+	return sendWSMessage(c.ws, message, "chart create session message")
+}
+
+// Quote Messages
 func SendQuoteCreateSessionMessage(c *Client, session string) error {
 	message := fmt.Sprintf(`{"m":"quote_create_session","p":["%s"]}`, session)
 	if err := sendWSMessage(c.ws, message, "quote create session message"); err != nil {

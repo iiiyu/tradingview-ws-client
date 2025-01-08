@@ -8,9 +8,29 @@ import (
 	"time"
 
 	"github.com/iiiyu/tradingview-ws-client/pkg/tvwsclient"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 func main() {
+	// Setup command line flags
+	configPath := pflag.StringP("config", "c", "config.yaml", "path to config file")
+	pflag.Parse()
+
+	// Setup viper
+	viper.SetConfigFile(*configPath)
+	if err := viper.ReadInConfig(); err != nil {
+		slog.Error("failed to read config file", "error", err)
+		os.Exit(1)
+	}
+
+	// Get auth token from config
+	authToken := viper.GetString("auth.token")
+	if authToken == "" {
+		slog.Error("auth token not found in config")
+		os.Exit(1)
+	}
+
 	// Setup structured logging
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -18,7 +38,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	// Create a new client
-	client, err := tvwsclient.NewClient("unauthorized_user_token")
+	client, err := tvwsclient.NewClient(authToken)
 	if err != nil {
 		slog.Error("failed to create client", "error", err)
 		os.Exit(1)
@@ -28,7 +48,9 @@ func main() {
 	// Example symbols
 	symbols := []string{
 		"NASDAQ:AAPL",
-		"BINANCE:BTCUSDT",
+		// "BINANCE:BTCUSDT",
+		// "HKEX:700",
+		// "HKEX_DLY:1810",
 	}
 	slog.Info("starting to receive trade data", "symbols", symbols)
 
@@ -57,9 +79,9 @@ func main() {
 		if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
 			slog.Error("failed to send add quote symbols session message ", "error", err)
 		}
-		if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, []string{"BINANCE:SOLUSDT", "BINANCE:ETHUSDT"}); err != nil {
-			slog.Error("failed to send add quote symbols session message ", "error", err)
-		}
+		// if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, []string{"BINANCE:SOLUSDT", "BINANCE:ETHUSDT"}); err != nil {
+		// 	slog.Error("failed to send add quote symbols session message ", "error", err)
+		// }
 
 		time.Sleep(10 * time.Second)
 		if err := tvwsclient.SendQuoteRemoveSymbolsMessage(client, qsSession, []string{"BINANCE:BTCUSDT"}); err != nil {
