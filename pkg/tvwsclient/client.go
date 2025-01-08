@@ -3,6 +3,7 @@ package tvwsclient
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -17,6 +18,7 @@ type Client struct {
 	wsURL         string
 	validateURL   string
 	authToken     string
+	maxRetries    int
 }
 
 var heartbeatRegex = regexp.MustCompile(`~h~\d+`)
@@ -28,6 +30,7 @@ func NewClient(authToken string, options ...Option) (*Client, error) {
 		wsURL:         "wss://prodata.tradingview.com/socket.io/websocket?from=screener%2F",
 		validateURL:   "https://scanner.tradingview.com/symbol?symbol=%s%%3A%s&fields=market&no_404=false",
 		authToken:     authToken,
+		maxRetries:    5,
 	}
 
 	// Apply options
@@ -35,13 +38,34 @@ func NewClient(authToken string, options ...Option) (*Client, error) {
 		opt(client)
 	}
 
-	conn, _, err := websocket.DefaultDialer.Dial(client.wsURL, client.requestHeader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to WebSocket: %w", err)
+	if err := client.connect(); err != nil {
+		return nil, err
 	}
-	client.ws = conn
 
 	return client, nil
+}
+
+// connect establishes a WebSocket connection
+func (c *Client) connect() error {
+	conn, _, err := websocket.DefaultDialer.Dial(c.wsURL, c.requestHeader)
+	if err != nil {
+		return fmt.Errorf("failed to connect to WebSocket: %w", err)
+	}
+	c.ws = conn
+	return nil
+}
+
+// reconnect attempts to reconnect to the WebSocket server
+func (c *Client) reconnect() error {
+	if c.ws != nil {
+		c.ws.Close()
+	}
+
+	if err := c.connect(); err != nil {
+		return err
+	}
+
+	return c.SendInitMessage()
 }
 
 func (c *Client) SendInitMessage() error {
@@ -61,20 +85,46 @@ func (c *Client) SendInitMessage() error {
 }
 
 func (c *Client) ReadMessage(dataChan chan<- map[string]interface{}) error {
-	// Read messages in a loop
+	retries := 0
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				return nil
 			}
-			return fmt.Errorf("error reading message: %w", err)
+
+			// Attempt to reconnect if we haven't exceeded max retries
+			if retries < c.maxRetries {
+				retries++
+				slog.Error("connection error, attempting reconnect",
+					"attempt", retries,
+					"max_retries", c.maxRetries,
+					"error", err)
+
+				if err := c.reconnect(); err != nil {
+					slog.Error("reconnection attempt failed",
+						"attempt", retries,
+						"error", err)
+					continue
+				}
+
+				slog.Info("successfully reconnected",
+					"attempt", retries)
+				continue
+			}
+
+			return fmt.Errorf("error reading message after %d reconnection attempts: %w", retries, err)
 		}
+
+		// Reset retry counter on successful message
+		retries = 0
 
 		// Handle heartbeat messages
 		if heartbeatRegex.Match(message) {
 			if err := c.ws.WriteMessage(websocket.TextMessage, message); err != nil {
-				return fmt.Errorf("error sending heartbeat response: %w", err)
+				slog.Error("error sending heartbeat response",
+					"error", err)
+				continue // Don't return on heartbeat errors, try to reconnect
 			}
 			continue
 		}
