@@ -63,3 +63,11 @@ func SendQuoteAddSymbolsMessage(c *Client, session string, symbols []string) err
 	)
 	return sendWSMessage(c.ws, message, "quote add symbols message")
 }
+
+func SendQuoteRemoveSymbolsMessage(c *Client, session string, symbols []string) error {
+	message := fmt.Sprintf(`{"m":"quote_remove_symbols","p":["%s","%s"]}`,
+		session,
+		strings.Join(symbols, `","`),
+	)
+	return sendWSMessage(c.ws, message, "quote remove symbols message")
+}

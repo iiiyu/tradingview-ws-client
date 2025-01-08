@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/iiiyu/tradingview-ws-client/pkg/tvwsclient"
 )
@@ -55,6 +56,14 @@ func main() {
 		}
 		if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
 			slog.Error("failed to send add quote symbols session message ", "error", err)
+		}
+		if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, []string{"BINANCE:SOLUSDT", "BINANCE:ETHUSDT"}); err != nil {
+			slog.Error("failed to send add quote symbols session message ", "error", err)
+		}
+
+		time.Sleep(10 * time.Second)
+		if err := tvwsclient.SendQuoteRemoveSymbolsMessage(client, qsSession, []string{"BINANCE:BTCUSDT"}); err != nil {
+			slog.Error("failed to send remove quote symbols session message ", "error", err)
 		}
 	}()
 
