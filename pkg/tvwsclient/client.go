@@ -80,7 +80,7 @@ func (c *Client) SendInitMessage() error {
 	return nil
 }
 
-func (c *Client) ReadMessage(dataChan chan<- map[string]interface{}) error {
+func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 	retries := 0
 	for {
 		_, message, err := c.ws.ReadMessage()
@@ -129,106 +129,12 @@ func (c *Client) ReadMessage(dataChan chan<- map[string]interface{}) error {
 		parts := strings.Split(string(message), "~m~")
 		for _, part := range parts {
 			if strings.HasPrefix(part, "{") {
-				slog.Debug("part", "part", part)
+				// slog.Debug("received", "message", part)
 				var response TVResponse
 				if err := json.Unmarshal([]byte(part), &response); err != nil {
 					continue
 				}
-
-				if len(response.Params) < 2 {
-					continue
-				}
-
-				switch response.Method {
-				case "qsd":
-					if quoteDataRaw, err := json.Marshal(response.Params[1]); err == nil {
-						var quote QuoteData
-						if err := json.Unmarshal(quoteDataRaw, &quote); err == nil {
-							// Convert to map for compatibility with existing channel
-							dataMap := map[string]interface{}{
-								"m": response.Method,
-								"p": []interface{}{response.Params[0], quote},
-							}
-							dataChan <- dataMap
-						}
-					}
-				case "series_loading":
-					// The params are already in the correct array format, no need to marshal/unmarshal
-					if len(response.Params) >= 3 {
-						msg := SeriesLoadingMessage{
-							ChartSessionID: response.Params[0].(string),
-							SeriesID:       response.Params[1].(string),
-							SeriesSet:      response.Params[2].(string),
-						}
-						dataMap := map[string]interface{}{
-							"m": response.Method,
-							"p": []interface{}{response.Params[0], msg},
-						}
-						dataChan <- dataMap
-					}
-				case "symbol_resolved":
-					if len(response.Params) >= 3 {
-						// Marshal just the symbol info (third parameter) into JSON
-						if symbolInfoRaw, err := json.Marshal(response.Params[2]); err == nil {
-							var symbolInfo SymbolInfo
-							if err := json.Unmarshal(symbolInfoRaw, &symbolInfo); err != nil {
-								slog.Error("failed to unmarshal symbol info", "error", err)
-								continue
-							}
-
-							// Construct the message with the session ID and symbol info
-							msg := SymbolResolvedMessage{
-								ChartSessionID: response.Params[0].(string),
-								SeriesID:       response.Params[1].(string),
-								SymbolInfo:     symbolInfo,
-							}
-
-							dataMap := map[string]interface{}{
-								"m": response.Method,
-								"p": []interface{}{response.Params[0], msg},
-							}
-							dataChan <- dataMap
-						}
-					}
-				case "timescale_update":
-					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
-						var msg TimescaleUpdateMessage
-						if err := json.Unmarshal(dataRaw, &msg); err == nil {
-							dataMap := map[string]interface{}{
-								"m": response.Method,
-								"p": []interface{}{response.Params[0], msg},
-							}
-							dataChan <- dataMap
-						}
-					}
-				case "series_completed":
-					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
-						var msg SeriesCompletedMessage
-						if err := json.Unmarshal(dataRaw, &msg); err == nil {
-							dataMap := map[string]interface{}{
-								"m": response.Method,
-								"p": []interface{}{response.Params[0], msg},
-							}
-							dataChan <- dataMap
-						}
-					}
-				}
-
-				// Only process quote data messages
-				// if response.Method == "qsd" && len(response.Params) >= 2 {
-				// 	// Extract the quote data from params
-				// 	if quoteDataRaw, err := json.Marshal(response.Params[1]); err == nil {
-				// 		var quote QuoteData
-				// 		if err := json.Unmarshal(quoteDataRaw, &quote); err == nil {
-				// 			// Convert to map for compatibility with existing channel
-				// 			dataMap := map[string]interface{}{
-				// 				"m": response.Method,
-				// 				"p": []interface{}{response.Params[0], quote},
-				// 			}
-				// 			dataChan <- dataMap
-				// 		}
-				// 	}
-				// }
+				dataChan <- response
 			}
 		}
 	}

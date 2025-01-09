@@ -20,39 +20,39 @@ type QuoteData struct {
 
 // SymbolData represents the trading data for a symbol
 type SymbolData struct {
-	BaseCurrencyLogoID string  `json:"base-currency-logoid"`
-	Change             float64 `json:"ch"`  // Price change
-	ChangePercent      float64 `json:"chp"` // Price change percentage
-	CurrencyLogoID     string  `json:"currency-logoid"`
-	CurrencyCode       string  `json:"currency_code"` // Currency (USD, USDT, etc.)
-	CurrencyID         string  `json:"currency_id"`
-	BaseCurrencyID     string  `json:"base_currency_id"`
-	CurrentSession     string  `json:"current_session"` // Session status
-	Description        string  `json:"description"`     // Full name
-	Exchange           string  `json:"exchange"`        // Exchange name
-	Format             string  `json:"format"`
-	Fractional         bool    `json:"fractional"`
-	IsTradable         bool    `json:"is_tradable"`
-	Language           string  `json:"language"`
-	LocalDescription   string  `json:"local_description"`
-	ListedExchange     string  `json:"listed_exchange"`
-	LogoID             string  `json:"logoid"`
-	LastPrice          float64 `json:"lp"`      // Last price
-	LastPriceTime      int64   `json:"lp_time"` // Timestamp
-	MinMove            int     `json:"minmov"`
-	MinMove2           int     `json:"minmove2"`
-	OriginalName       string  `json:"original_name"`
-	PriceScale         int     `json:"pricescale"` // Price scale factor
-	ProName            string  `json:"pro_name"`
-	ShortName          string  `json:"short_name"` // Symbol short name
-	Type               string  `json:"type"`       // Asset type (stock, spot, etc.)
-	TypeSpecs          string  `json:"typespecs"`
-	UpdateMode         string  `json:"update_mode"`
-	Volume             float64 `json:"volume"` // Trading volume
-	VariableTickSize   bool    `json:"variable_tick_size"`
-	ValueUnitID        string  `json:"value_unit_id"`
-	UnitID             string  `json:"unit_id"`
-	Measure            string  `json:"measure"`
+	BaseCurrencyLogoID string   `json:"base-currency-logoid,omitempty"`
+	Change             float64  `json:"ch,omitempty"`  // Price change
+	ChangePercent      float64  `json:"chp,omitempty"` // Price change percentage
+	CurrencyLogoID     string   `json:"currency-logoid,omitempty"`
+	CurrencyCode       string   `json:"currency_code,omitempty"` // Currency (USD, USDT, etc.)
+	CurrencyID         string   `json:"currency_id,omitempty"`
+	BaseCurrencyID     string   `json:"base_currency_id,omitempty"`
+	CurrentSession     string   `json:"current_session,omitempty"` // Session status
+	Description        string   `json:"description,omitempty"`     // Full name
+	Exchange           string   `json:"exchange,omitempty"`        // Exchange name
+	Format             string   `json:"format,omitempty"`
+	Fractional         bool     `json:"fractional,omitempty"`
+	IsTradable         bool     `json:"is_tradable,omitempty"`
+	Language           string   `json:"language,omitempty"`
+	LocalDescription   string   `json:"local_description,omitempty"`
+	ListedExchange     string   `json:"listed_exchange,omitempty"`
+	LogoID             string   `json:"logoid,omitempty"`
+	LastPrice          float64  `json:"lp,omitempty"`      // Last price
+	LastPriceTime      int64    `json:"lp_time,omitempty"` // Timestamp
+	MinMove            int      `json:"minmov,omitempty"`
+	MinMove2           int      `json:"minmove2,omitempty"`
+	OriginalName       string   `json:"original_name,omitempty"`
+	PriceScale         int      `json:"pricescale,omitempty"` // Price scale factor
+	ProName            string   `json:"pro_name,omitempty"`
+	ShortName          string   `json:"short_name,omitempty"` // Symbol short name
+	Type               string   `json:"type,omitempty"`       // Asset type (stock, spot, etc.)
+	TypeSpecs          []string `json:"typespecs,omitempty"`
+	UpdateMode         string   `json:"update_mode,omitempty"`
+	Volume             float64  `json:"volume,omitempty"` // Trading volume
+	VariableTickSize   string   `json:"variable_tick_size,omitempty"`
+	ValueUnitID        string   `json:"value_unit_id,omitempty"`
+	UnitID             string   `json:"unit_id,omitempty"`
+	Measure            string   `json:"measure,omitempty"`
 }
 
 // SeriesLoadingMessage represents the series_loading message

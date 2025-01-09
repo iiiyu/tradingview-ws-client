@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -58,7 +59,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	// Create data channel
-	dataChan := make(chan map[string]interface{})
+	dataChan := make(chan tvwsclient.TVResponse)
 
 	// Start receiving data
 	go func() {
@@ -112,48 +113,77 @@ func main() {
 	for {
 		select {
 		case data := <-dataChan:
-			// slog.Debug("data", "data", data)
-			if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
-				switch data["m"] {
-				case "qsd":
-					if quote, ok := response[1].(tvwsclient.QuoteData); ok {
-						slog.Info("received quote data",
-							"symbol", quote.Name,
-							"price", quote.Values.LastPrice,
-							"change", quote.Values.Change,
-							"volume", quote.Values.Volume,
-						)
+			// slog.Debug("data", "data.Method", data.Method)
+			if len(data.Params) >= 2 {
+				slog.Debug("data", "data", data.Params[1])
+			}
+			switch data.Method {
+			case "qsd":
+				// please make the data.Param to tvwsclient.QuoteData
+				if len(data.Params) >= 2 {
+					// Convert the interface{} back to JSON
+					paramJSON, err := json.Marshal(data.Params[1])
+					if err != nil {
+						// return nil, fmt.Errorf("failed to marshal param: %w", err)
+						slog.Error("failed to marshal param", "error", err)
 					}
-				case "series_loading":
-					if msg, ok := response[1].(tvwsclient.SeriesLoadingMessage); ok {
-						slog.Info("received series loading",
-							"session", response[0],
-							"series", msg,
-						)
+
+					// Unmarshal into QuoteData
+					var quoteData tvwsclient.QuoteData
+					if err := json.Unmarshal(paramJSON, &quoteData); err != nil {
+						slog.Error("failed to unmarshal quote data", "error", err)
 					}
-				case "symbol_resolved":
-					if msg, ok := response[1].(tvwsclient.SymbolResolvedMessage); ok {
-						slog.Info("received symbol resolved",
-							"session", response[0],
-							"message", msg,
-						)
-					}
-				case "timescale_update":
-					if msg, ok := response[1].(tvwsclient.TimescaleUpdateMessage); ok {
-						slog.Info("received timescale update",
-							"session", response[0],
-							"message", msg,
-						)
-					}
-				case "series_completed":
-					if msg, ok := response[1].(tvwsclient.SeriesCompletedMessage); ok {
-						slog.Info("received series completed",
-							"session", response[0],
-							"message", msg,
-						)
-					}
+					// if quote, ok := data.Params[1].(tvwsclient.QuoteData); ok {
+					slog.Info("received quote data",
+						"symbol", quoteData.Name,
+						"price", quoteData.Values.LastPrice,
+						"change", quoteData.Values.Change,
+						"volume", quoteData.Values.Volume,
+					)
+					// }
 				}
 			}
+			// if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
+			// 	switch data["m"] {
+			// 	case "qsd":
+			// 		if quote, ok := response[1].(tvwsclient.QuoteData); ok {
+			// 			slog.Info("received quote data",
+			// 				"symbol", quote.Name,
+			// 				"price", quote.Values.LastPrice,
+			// 				"change", quote.Values.Change,
+			// 				"volume", quote.Values.Volume,
+			// 			)
+			// 		}
+			// 	case "series_loading":
+			// 		if msg, ok := response[1].(tvwsclient.SeriesLoadingMessage); ok {
+			// 			slog.Info("received series loading",
+			// 				"session", response[0],
+			// 				"series", msg,
+			// 			)
+			// 		}
+			// 	case "symbol_resolved":
+			// 		if msg, ok := response[1].(tvwsclient.SymbolResolvedMessage); ok {
+			// 			slog.Info("received symbol resolved",
+			// 				"session", response[0],
+			// 				"message", msg,
+			// 			)
+			// 		}
+			// 	case "timescale_update":
+			// 		if msg, ok := response[1].(tvwsclient.TimescaleUpdateMessage); ok {
+			// 			slog.Info("received timescale update",
+			// 				"session", response[0],
+			// 				"message", msg,
+			// 			)
+			// 		}
+			// 	case "series_completed":
+			// 		if msg, ok := response[1].(tvwsclient.SeriesCompletedMessage); ok {
+			// 			slog.Info("received series completed",
+			// 				"session", response[0],
+			// 				"message", msg,
+			// 			)
+			// 		}
+			// 	}
+			// }
 		case <-sigChan:
 			slog.Info("shutting down...")
 			return
