@@ -112,7 +112,7 @@ func main() {
 	for {
 		select {
 		case data := <-dataChan:
-			slog.Debug("data", "data", data)
+			// slog.Debug("data", "data", data)
 			if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
 				switch data["m"] {
 				case "qsd":

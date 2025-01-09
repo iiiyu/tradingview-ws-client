@@ -153,20 +153,36 @@ func (c *Client) ReadMessage(dataChan chan<- map[string]interface{}) error {
 						}
 					}
 				case "series_loading":
-					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
-						var msg SeriesLoadingMessage
-						if err := json.Unmarshal(dataRaw, &msg); err == nil {
-							dataMap := map[string]interface{}{
-								"m": response.Method,
-								"p": []interface{}{response.Params[0], msg},
-							}
-							dataChan <- dataMap
+					// The params are already in the correct array format, no need to marshal/unmarshal
+					if len(response.Params) >= 3 {
+						msg := SeriesLoadingMessage{
+							ChartSessionID: response.Params[0].(string),
+							SeriesID:       response.Params[1].(string),
+							SeriesSet:      response.Params[2].(string),
 						}
+						dataMap := map[string]interface{}{
+							"m": response.Method,
+							"p": []interface{}{response.Params[0], msg},
+						}
+						dataChan <- dataMap
 					}
 				case "symbol_resolved":
-					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
-						var msg SymbolResolvedMessage
-						if err := json.Unmarshal(dataRaw, &msg); err == nil {
+					if len(response.Params) >= 3 {
+						// Marshal just the symbol info (third parameter) into JSON
+						if symbolInfoRaw, err := json.Marshal(response.Params[2]); err == nil {
+							var symbolInfo SymbolInfo
+							if err := json.Unmarshal(symbolInfoRaw, &symbolInfo); err != nil {
+								slog.Error("failed to unmarshal symbol info", "error", err)
+								continue
+							}
+
+							// Construct the message with the session ID and symbol info
+							msg := SymbolResolvedMessage{
+								ChartSessionID: response.Params[0].(string),
+								SeriesID:       response.Params[1].(string),
+								SymbolInfo:     symbolInfo,
+							}
+
 							dataMap := map[string]interface{}{
 								"m": response.Method,
 								"p": []interface{}{response.Params[0], msg},

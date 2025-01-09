@@ -57,52 +57,81 @@ type SymbolData struct {
 
 // SeriesLoadingMessage represents the series_loading message
 type SeriesLoadingMessage struct {
-	ChartSessionID string
-	SeriesID       string
-	SeriesSet      string
+	ChartSessionID string `json:"0"` // First element in params array
+	SeriesID       string `json:"1"` // Second element in params array
+	SeriesSet      string `json:"2"` // Third element in params array
 }
 
 // SymbolResolvedMessage represents the symbol_resolved message
 type SymbolResolvedMessage struct {
-	ChartSessionID string
-	SeriesID       string
-	SymbolInfo     SymbolInfo
+	ChartSessionID string     `json:"0"`
+	SeriesID       string     `json:"1"`
+	SymbolInfo     SymbolInfo `json:"2"`
+}
+type SymbolInfo struct {
+	Source2             Source2Info      `json:"source2"`
+	CurrencyCode        string           `json:"currency_code"`
+	SourceID            string           `json:"source_id"`
+	SessionHolidays     string           `json:"session_holidays"`
+	SubsessionID        string           `json:"subsession_id"`
+	ProviderID          string           `json:"provider_id"`
+	CurrencyID          string           `json:"currency_id"`
+	Country             string           `json:"country"`
+	ProPerm             string           `json:"pro_perm"`
+	Measure             string           `json:"measure"`
+	AllowedAdjustment   string           `json:"allowed_adjustment"`
+	ShortDescription    string           `json:"short_description"`
+	VariableTickSize    string           `json:"variable_tick_size"`
+	ISIN                string           `json:"isin"`
+	Language            string           `json:"language"`
+	LocalDescription    string           `json:"local_description"`
+	Name                string           `json:"name"`
+	FullName            string           `json:"full_name"`
+	ProName             string           `json:"pro_name"`
+	BaseName            []string         `json:"base_name"`
+	Description         string           `json:"description"`
+	Exchange            string           `json:"exchange"`
+	PriceScale          int              `json:"pricescale"`
+	PointValue          float64          `json:"pointvalue"`
+	MinMove             int              `json:"minmov"`
+	Session             string           `json:"session"`
+	SessionDisplay      string           `json:"session_display"`
+	Subsessions         []SubsessionInfo `json:"subsessions"`
+	Type                string           `json:"type"`
+	TypeSpecs           []string         `json:"typespecs"`
+	HasIntraday         bool             `json:"has_intraday"`
+	Fractional          bool             `json:"fractional"`
+	ListedExchange      string           `json:"listed_exchange"`
+	Legs                []string         `json:"legs"`
+	IsTradable          bool             `json:"is_tradable"`
+	MinMove2            int              `json:"minmove2"`
+	Timezone            string           `json:"timezone"`
+	Aliases             []string         `json:"aliases"`
+	Alternatives        []string         `json:"alternatives"`
+	IsReplayable        bool             `json:"is_replayable"`
+	HasAdjustment       bool             `json:"has_adjustment"`
+	HasExtendedHours    bool             `json:"has_extended_hours"`
+	BarSource           string           `json:"bar_source"`
+	BarTransform        string           `json:"bar_transform"`
+	BarFillgaps         bool             `json:"bar_fillgaps"`
+	VisiblePlotsSet     string           `json:"visible_plots_set"`
+	IsTickbarsAvailable bool             `json:"is-tickbars-available"`
+	FIGI                FIGIInfo         `json:"figi"`
 }
 
-// SymbolInfo contains detailed information about a symbol
-type SymbolInfo struct {
-	Source2           Source2Info `json:"source2"`
-	CurrencyCode      string      `json:"currency_code"`
-	SourceID          string      `json:"source_id"`
-	SessionHolidays   string      `json:"session_holidays"`
-	SubsessionID      string      `json:"subsession_id"`
-	ProviderID        string      `json:"provider_id"`
-	CurrencyID        string      `json:"currency_id"`
-	Country           string      `json:"country"`
-	ProPerm           string      `json:"pro_perm"`
-	Measure           string      `json:"measure"`
-	AllowedAdjustment string      `json:"allowed_adjustment"`
-	ShortDescription  string      `json:"short_description"`
-	VariableTickSize  string      `json:"variable_tick_size"`
-	ISIN              string      `json:"isin"`
-	Language          string      `json:"language"`
-	LocalDescription  string      `json:"local_description"`
-	Name              string      `json:"name"`
-	FullName          string      `json:"full_name"`
-	ProName           string      `json:"pro_name"`
-	BaseName          []string    `json:"base_name"`
-	Description       string      `json:"description"`
-	Exchange          string      `json:"exchange"`
-	PriceScale        int         `json:"pricescale"`
-	PointValue        float64     `json:"pointvalue"`
-	MinMove           int         `json:"minmov"`
-	Session           string      `json:"session"`
-	SessionDisplay    string      `json:"session_display"`
-	Type              string      `json:"type"`
-	HasIntraday       bool        `json:"has_intraday"`
-	Fractional        bool        `json:"fractional"`
-	ListedExchange    string      `json:"listed_exchange"`
-	IsTradable        bool        `json:"is_tradable"`
+// Add these new structs
+type SubsessionInfo struct {
+	Description       string `json:"description"`
+	ID                string `json:"id"`
+	Private           bool   `json:"private"`
+	Session           string `json:"session"`
+	SessionCorrection string `json:"session-correction,omitempty"`
+	SessionDisplay    string `json:"session-display"`
+}
+
+type FIGIInfo struct {
+	CountryComposite string `json:"country-composite"`
+	ExchangeLevel    string `json:"exchange-level"`
 }
 
 // Source2Info contains information about the data source
