@@ -2,6 +2,7 @@ package tvwsclient
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ const defaultQuoteFields = "base-currency-logoid,ch,chp,currency-logoid,currency
 // sendWSMessage is a helper function that handles the common pattern of sending websocket messages
 func sendWSMessage(ws *websocket.Conn, message string, operation string) error {
 	wrappedMsg := wrappedMessage(message)
+	slog.Debug("Send Message", "message", wrappedMsg)
 	if err := ws.WriteMessage(websocket.TextMessage, []byte(wrappedMsg)); err != nil {
 		return fmt.Errorf("error sending %s: %w", operation, err)
 	}
@@ -38,7 +40,7 @@ func SendSetLocalMessage(c *Client) error {
 
 // Chart Messages
 func SendChartCreateSessionMessage(c *Client, session string) error {
-	message := fmt.Sprintf(`{"m":"set_auth_token","p":["%s",""]}`, session)
+	message := fmt.Sprintf(`{"m":"chart_create_session","p":["%s",""]}`, session)
 	return sendWSMessage(c.ws, message, "chart create session message")
 }
 
@@ -53,7 +55,7 @@ func SendResolveSymbol(c *Client, session string, symbol string) error {
 }
 
 func SendCreateSeries(c *Client, session string, interval string) error {
-	message := fmt.Sprintf(`{"m":"create_series","p":["%s","sds_1","s1","sds_sym_1","%s",300,""]}`, session, interval)
+	message := fmt.Sprintf(`{"m":"create_series","p":["%s","sds_1","s1","sds_sym_1","%s",10,""]}`, session, interval)
 	return sendWSMessage(c.ws, message, "chart create session message")
 }
 

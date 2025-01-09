@@ -40,3 +40,5 @@ bin/
 dist/
 
 config.yaml
+
+__debug_bin*

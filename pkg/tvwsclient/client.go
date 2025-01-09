@@ -52,7 +52,7 @@ func (c *Client) connect() error {
 		return fmt.Errorf("failed to connect to WebSocket: %w", err)
 	}
 	c.ws = conn
-	return nil
+	return c.SendInitMessage()
 }
 
 // reconnect attempts to reconnect to the WebSocket server
@@ -65,7 +65,7 @@ func (c *Client) reconnect() error {
 		return err
 	}
 
-	return c.SendInitMessage()
+	return nil
 }
 
 func (c *Client) SendInitMessage() error {
@@ -77,10 +77,6 @@ func (c *Client) SendInitMessage() error {
 		return err
 	}
 
-	csSession := GenerateSession("cs_")
-	if err := SendChartCreateSessionMessage(c, csSession); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -133,14 +129,18 @@ func (c *Client) ReadMessage(dataChan chan<- map[string]interface{}) error {
 		parts := strings.Split(string(message), "~m~")
 		for _, part := range parts {
 			if strings.HasPrefix(part, "{") {
+				slog.Debug("part", "part", part)
 				var response TVResponse
 				if err := json.Unmarshal([]byte(part), &response); err != nil {
 					continue
 				}
 
-				// Only process quote data messages
-				if response.Method == "qsd" && len(response.Params) >= 2 {
-					// Extract the quote data from params
+				if len(response.Params) < 2 {
+					continue
+				}
+
+				switch response.Method {
+				case "qsd":
 					if quoteDataRaw, err := json.Marshal(response.Params[1]); err == nil {
 						var quote QuoteData
 						if err := json.Unmarshal(quoteDataRaw, &quote); err == nil {
@@ -152,7 +152,67 @@ func (c *Client) ReadMessage(dataChan chan<- map[string]interface{}) error {
 							dataChan <- dataMap
 						}
 					}
+				case "series_loading":
+					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
+						var msg SeriesLoadingMessage
+						if err := json.Unmarshal(dataRaw, &msg); err == nil {
+							dataMap := map[string]interface{}{
+								"m": response.Method,
+								"p": []interface{}{response.Params[0], msg},
+							}
+							dataChan <- dataMap
+						}
+					}
+				case "symbol_resolved":
+					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
+						var msg SymbolResolvedMessage
+						if err := json.Unmarshal(dataRaw, &msg); err == nil {
+							dataMap := map[string]interface{}{
+								"m": response.Method,
+								"p": []interface{}{response.Params[0], msg},
+							}
+							dataChan <- dataMap
+						}
+					}
+				case "timescale_update":
+					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
+						var msg TimescaleUpdateMessage
+						if err := json.Unmarshal(dataRaw, &msg); err == nil {
+							dataMap := map[string]interface{}{
+								"m": response.Method,
+								"p": []interface{}{response.Params[0], msg},
+							}
+							dataChan <- dataMap
+						}
+					}
+				case "series_completed":
+					if dataRaw, err := json.Marshal(response.Params[1]); err == nil {
+						var msg SeriesCompletedMessage
+						if err := json.Unmarshal(dataRaw, &msg); err == nil {
+							dataMap := map[string]interface{}{
+								"m": response.Method,
+								"p": []interface{}{response.Params[0], msg},
+							}
+							dataChan <- dataMap
+						}
+					}
 				}
+
+				// Only process quote data messages
+				// if response.Method == "qsd" && len(response.Params) >= 2 {
+				// 	// Extract the quote data from params
+				// 	if quoteDataRaw, err := json.Marshal(response.Params[1]); err == nil {
+				// 		var quote QuoteData
+				// 		if err := json.Unmarshal(quoteDataRaw, &quote); err == nil {
+				// 			// Convert to map for compatibility with existing channel
+				// 			dataMap := map[string]interface{}{
+				// 				"m": response.Method,
+				// 				"p": []interface{}{response.Params[0], quote},
+				// 			}
+				// 			dataChan <- dataMap
+				// 		}
+				// 	}
+				// }
 			}
 		}
 	}

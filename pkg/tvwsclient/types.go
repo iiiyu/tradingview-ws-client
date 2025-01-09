@@ -115,27 +115,49 @@ type Source2Info struct {
 	URL          string `json:"url"`
 }
 
-// TimescaleUpdateMessage represents the timescale_update message
 type TimescaleUpdateMessage struct {
-	ChartSessionID string
-	Data           TimescaleData
-}
-
-// TimescaleData contains the chart data
-type TimescaleData struct {
-	SeriesID string     `json:"sds_1"`
-	Node     string     `json:"node"`
-	Series   []ChartBar `json:"s"`
-}
-
-// ChartBar represents a single bar of chart data
-type ChartBar struct {
-	Index  int       `json:"i"`
-	Values []float64 `json:"v"` // [timestamp, open, high, low, close, volume]
+	SDS1 struct {
+		Node string `json:"node"`
+		S    []struct {
+			I int       `json:"i"`
+			V []float64 `json:"v"` // [timestamp, open, high, low, close, volume]
+		} `json:"s"`
+		NS struct {
+			D       string `json:"d"`
+			Indexes []any  `json:"indexes"`
+		} `json:"ns"`
+		T   string `json:"t"`
+		Lbs struct {
+			BarCloseTime int64 `json:"bar_close_time"`
+		} `json:"lbs"`
+	} `json:"sds_1"`
+	Index     int     `json:"index"`
+	Zoffset   int     `json:"zoffset"`
+	Changes   []int64 `json:"changes"`
+	Marks     [][]int `json:"marks"`
+	IndexDiff []any   `json:"index_diff"`
+	T         int64   `json:"t"`
+	TMs       int64   `json:"t_ms"`
 }
 
 // QuoteCompletedMessage represents the quote_completed message
 type QuoteCompletedMessage struct {
 	SessionID string
 	Symbol    string
+}
+
+// SeriesCompletedMessage represents the series_completed message
+type SeriesCompletedMessage struct {
+	ChartSessionID string       // "cs_Djf7086hIqtS"
+	SeriesID       string       // "sds_1"
+	Status         string       // "streaming"
+	SeriesSet      string       // "s1"
+	Config         SeriesConfig // Contains configuration parameters
+	Time           int64        `json:"t,omitempty"`    // 1736302609
+	TimeMS         int64        `json:"t_ms,omitempty"` // 1736302609050
+}
+
+// SeriesConfig represents the configuration for a series
+type SeriesConfig struct {
+	RTUpdatePeriod int `json:"rt_update_period"` // 0
 }
