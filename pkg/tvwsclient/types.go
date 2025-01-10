@@ -3,6 +3,16 @@ package tvwsclient
 // Option represents a client option
 type Option func(*Client)
 
+// WebSocket message methods
+const (
+	MethodQuoteData       = "qsd"
+	MethodSeriesLoading   = "series_loading"
+	MethodSymbolResolved  = "symbol_resolved"
+	MethodTimescaleUpdate = "timescale_update"
+	MethodSeriesCompleted = "series_completed"
+	MethodDataUpdate      = "du"
+)
+
 // TVResponse represents the top-level response structure
 type TVResponse struct {
 	Method string        `json:"m"` // "qsd" for quote data
@@ -152,16 +162,20 @@ type Source2Info struct {
 }
 
 type TimescaleUpdateMessage struct {
-	ChartSessionID string `json:"0"`
-	SDS1           struct {
+	ChartSessionID string              `json:"0"`
+	Data           TimescaleUpdateData `json:"1"`
+}
+
+type TimescaleUpdateData struct {
+	SDS1 struct {
 		Node string `json:"node"`
 		S    []struct {
 			I int       `json:"i"`
 			V []float64 `json:"v"` // [timestamp, open, high, low, close, volume]
 		} `json:"s"`
 		NS struct {
-			D       string `json:"d"`
-			Indexes []any  `json:"indexes"`
+			D       string      `json:"d"`
+			Indexes interface{} `json:"indexes"` // Can be string "nochange" or array []
 		} `json:"ns"`
 		T   string `json:"t"`
 		Lbs struct {

@@ -130,7 +130,7 @@ func main() {
 			// slog.Debug("data", "data.Method", data.Method)
 			// slog.Debug("data", "data", data.Params)
 			switch data.Method {
-			case "qsd":
+			case tvwsclient.MethodQuoteData:
 				// please make the data.Param to tvwsclient.QuoteData
 				if len(data.Params) >= 2 {
 					// Convert the interface{} back to JSON
@@ -154,7 +154,7 @@ func main() {
 					)
 					// }
 				}
-			case "series_loading":
+			case tvwsclient.MethodSeriesLoading:
 				if len(data.Params) >= 3 {
 					seriesLoadingMessage := tvwsclient.SeriesLoadingMessage{
 						ChartSessionID: data.Params[0].(string),
@@ -186,7 +186,7 @@ func main() {
 						"config", seriesLoadingMessage.SeriesConfig,
 					)
 				}
-			case "symbol_resolved":
+			case tvwsclient.MethodSymbolResolved:
 				if len(data.Params) >= 3 {
 					// Convert the interface{} back to JSON for SymbolInfo
 					paramJSON, err := json.Marshal(data.Params[2])
@@ -216,7 +216,7 @@ func main() {
 					)
 				}
 
-			case "timescale_update":
+			case tvwsclient.MethodTimescaleUpdate:
 				if len(data.Params) >= 2 {
 					// Convert the interface{} back to JSON
 					paramJSON, err := json.Marshal(data.Params[1])
@@ -225,24 +225,27 @@ func main() {
 						continue
 					}
 
-					var timescaleUpdate tvwsclient.TimescaleUpdateMessage
-					if err := json.Unmarshal(paramJSON, &timescaleUpdate); err != nil {
+					var timescaleUpdateData tvwsclient.TimescaleUpdateData
+					if err := json.Unmarshal(paramJSON, &timescaleUpdateData); err != nil {
 						slog.Error("failed to unmarshal timescale update", "error", err)
 						continue
 					}
 
 					// Set the ChartSessionID from the first parameter
-					timescaleUpdate.ChartSessionID = data.Params[0].(string)
+					timescaleUpdate := tvwsclient.TimescaleUpdateMessage{
+						ChartSessionID: data.Params[0].(string),
+						Data:           timescaleUpdateData,
+					}
 
 					slog.Info("received timescale update",
 						"session", timescaleUpdate.ChartSessionID,
-						"bar_close_time", timescaleUpdate.SDS1.Lbs.BarCloseTime,
-						"candles_count", len(timescaleUpdate.SDS1.S),
-						"last_candle", timescaleUpdate.SDS1.S[len(timescaleUpdate.SDS1.S)-1],
+						"bar_close_time", timescaleUpdate.Data.SDS1.Lbs.BarCloseTime,
+						"candles_count", len(timescaleUpdate.Data.SDS1.S),
+						"last_candle", timescaleUpdate.Data.SDS1.S[len(timescaleUpdate.Data.SDS1.S)-1],
 					)
 
 					// If you want to access individual candle data:
-					for _, candle := range timescaleUpdate.SDS1.S {
+					for _, candle := range timescaleUpdate.Data.SDS1.S {
 						// candle.V contains [timestamp, open, high, low, close, volume]
 						timestamp := candle.V[0]
 						open := candle.V[1]
@@ -262,7 +265,7 @@ func main() {
 						)
 					}
 				}
-			case "series_completed":
+			case tvwsclient.MethodSeriesCompleted:
 				if len(data.Params) >= 5 {
 					// Create SeriesCompletedMessage
 					seriesCompletedMessage := tvwsclient.SeriesCompletedMessage{
@@ -289,7 +292,7 @@ func main() {
 						"config", seriesCompletedMessage.Config,
 					)
 				}
-			case "du":
+			case tvwsclient.MethodDataUpdate:
 				if len(data.Params) >= 2 {
 					// Convert the interface{} back to JSON
 					paramJSON, err := json.Marshal(data.Params[1])
@@ -326,48 +329,6 @@ func main() {
 					}
 				}
 			}
-
-		// if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
-		// 	switch data["m"] {
-		// 	case "qsd":
-		// 		if quote, ok := response[1].(tvwsclient.QuoteData); ok {
-		// 			slog.Info("received quote data",
-		// 				"symbol", quote.Name,
-		// 				"price", quote.Values.LastPrice,
-		// 				"change", quote.Values.Change,
-		// 				"volume", quote.Values.Volume,
-		// 			)
-		// 		}
-		// 	case "series_loading":
-		// 		if msg, ok := response[1].(tvwsclient.SeriesLoadingMessage); ok {
-		// 			slog.Info("received series loading",
-		// 				"session", response[0],
-		// 				"series", msg,
-		// 			)
-		// 		}
-		// 	case "symbol_resolved":
-		// 		if msg, ok := response[1].(tvwsclient.SymbolResolvedMessage); ok {
-		// 			slog.Info("received symbol resolved",
-		// 				"session", response[0],
-		// 				"message", msg,
-		// 			)
-		// 		}
-		// 	case "timescale_update":
-		// 		if msg, ok := response[1].(tvwsclient.TimescaleUpdateMessage); ok {
-		// 			slog.Info("received timescale update",
-		// 				"session", response[0],
-		// 				"message", msg,
-		// 			)
-		// 		}
-		// 	case "series_completed":
-		// 		if msg, ok := response[1].(tvwsclient.SeriesCompletedMessage); ok {
-		// 			slog.Info("received series completed",
-		// 				"session", response[0],
-		// 				"message", msg,
-		// 			)
-		// 		}
-		// 	}
-		// }
 
 		case <-sigChan:
 			slog.Info("shutting down...")
