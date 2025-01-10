@@ -1,0 +1,9 @@
+{
+  "name": "tradingview-data-service",
+  "dockerfile": "deploy/docker/Dockerfile",
+  "port": 3333,
+  "buildCommand": "",
+  "startCommand": "",
+  "healthCheckPath": "/health",
+  "healthCheckTimeout": 10
+}

@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  tradingview-data-service:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "3333:3333"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
