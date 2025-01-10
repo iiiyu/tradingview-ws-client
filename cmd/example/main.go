@@ -154,7 +154,123 @@ func main() {
 					)
 					// }
 				}
+			case "series_loading":
+				if len(data.Params) >= 3 {
+					seriesLoadingMessage := tvwsclient.SeriesLoadingMessage{
+						ChartSessionID: data.Params[0].(string),
+						SeriesID:       data.Params[1].(string),
+						SeriesSet:      data.Params[2].(string),
+					}
+
+					// Optional fields
+					if len(data.Params) >= 4 {
+						seriesLoadingMessage.SeriesNumber = data.Params[3].(string)
+					}
+
+					if len(data.Params) >= 5 {
+						// Convert the interface{} back to JSON for SeriesConfig
+						if configData, ok := data.Params[4].(map[string]interface{}); ok {
+							if period, ok := configData["rt_update_period"].(float64); ok {
+								seriesLoadingMessage.SeriesConfig = tvwsclient.SeriesConfig{
+									RTUpdatePeriod: int(period),
+								}
+							}
+						}
+					}
+
+					slog.Info("received series loading",
+						"session", seriesLoadingMessage.ChartSessionID,
+						"series", seriesLoadingMessage.SeriesID,
+						"series set", seriesLoadingMessage.SeriesSet,
+						"series number", seriesLoadingMessage.SeriesNumber,
+						"config", seriesLoadingMessage.SeriesConfig,
+					)
+				}
+			case "symbol_resolved":
+				if len(data.Params) >= 3 {
+					// Convert the interface{} back to JSON for SymbolInfo
+					paramJSON, err := json.Marshal(data.Params[2])
+					if err != nil {
+						slog.Error("failed to marshal symbol info param", "error", err)
+						continue
+					}
+
+					var symbolInfo tvwsclient.SymbolInfo
+					if err := json.Unmarshal(paramJSON, &symbolInfo); err != nil {
+						slog.Error("failed to unmarshal symbol info", "error", err)
+						continue
+					}
+
+					symbolResolvedMessage := tvwsclient.SymbolResolvedMessage{
+						ChartSessionID: data.Params[0].(string),
+						SeriesID:       data.Params[1].(string),
+						SymbolInfo:     symbolInfo,
+					}
+
+					slog.Info("received symbol resolved",
+						"session", symbolResolvedMessage.ChartSessionID,
+						"series", symbolResolvedMessage.SeriesID,
+						"symbol_name", symbolResolvedMessage.SymbolInfo.Name,
+						"exchange", symbolResolvedMessage.SymbolInfo.Exchange,
+						"description", symbolResolvedMessage.SymbolInfo.Description,
+					)
+				}
+
+			case "timescale_update":
+				if len(data.Params) >= 2 {
+					// Convert the interface{} back to JSON
+					paramJSON, err := json.Marshal(data.Params[1])
+					if err != nil {
+						slog.Error("failed to marshal timescale update param", "error", err)
+						continue
+					}
+
+					var timescaleUpdate tvwsclient.TimescaleUpdateMessage
+					if err := json.Unmarshal(paramJSON, &timescaleUpdate); err != nil {
+						slog.Error("failed to unmarshal timescale update", "error", err)
+						continue
+					}
+
+					// Set the ChartSessionID from the first parameter
+					timescaleUpdate.ChartSessionID = data.Params[0].(string)
+
+					slog.Info("received timescale update",
+						"session", timescaleUpdate.ChartSessionID,
+						"bar_close_time", timescaleUpdate.SDS1.Lbs.BarCloseTime,
+						"candles_count", len(timescaleUpdate.SDS1.S),
+						"last_candle", timescaleUpdate.SDS1.S[len(timescaleUpdate.SDS1.S)-1],
+					)
+
+					// If you want to access individual candle data:
+					for _, candle := range timescaleUpdate.SDS1.S {
+						// candle.V contains [timestamp, open, high, low, close, volume]
+						timestamp := candle.V[0]
+						open := candle.V[1]
+						high := candle.V[2]
+						low := candle.V[3]
+						close := candle.V[4]
+						volume := candle.V[5]
+
+						slog.Debug("candle data",
+							"index", candle.I,
+							"timestamp", timestamp,
+							"open", open,
+							"high", high,
+							"low", low,
+							"close", close,
+							"volume", volume,
+						)
+					}
+				}
+			case "series_completed":
+				if len(data.Params) >= 2 {
+					slog.Info("received series completed",
+						"session", data.Params[0],
+						"message", data.Params[1],
+					)
+				}
 			}
+
 		// if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
 		// 	switch data["m"] {
 		// 	case "qsd":

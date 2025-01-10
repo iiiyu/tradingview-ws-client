@@ -57,9 +57,16 @@ type SymbolData struct {
 
 // SeriesLoadingMessage represents the series_loading message
 type SeriesLoadingMessage struct {
-	ChartSessionID string `json:"0"` // First element in params array
-	SeriesID       string `json:"1"` // Second element in params array
-	SeriesSet      string `json:"2"` // Third element in params array
+	ChartSessionID string       `json:"0,omitempty"` // First element in params array
+	SeriesID       string       `json:"1,omitempty"` // Second element in params array
+	SeriesSet      string       `json:"2,omitempty"` // Third element in params array
+	SeriesNumber   string       `json:"3,omitempty"` // Fourth element in params array
+	SeriesConfig   SeriesConfig `json:"4,omitempty"` // Fourth element in params array
+}
+
+// {"rt_update_period":0}
+type SeriesConfig struct {
+	RTUpdatePeriod int `json:"rt_update_period"` // 0
 }
 
 // SymbolResolvedMessage represents the symbol_resolved message
@@ -145,7 +152,8 @@ type Source2Info struct {
 }
 
 type TimescaleUpdateMessage struct {
-	SDS1 struct {
+	ChartSessionID string `json:"0"`
+	SDS1           struct {
 		Node string `json:"node"`
 		S    []struct {
 			I int       `json:"i"`
@@ -184,9 +192,4 @@ type SeriesCompletedMessage struct {
 	Config         SeriesConfig // Contains configuration parameters
 	Time           int64        `json:"t,omitempty"`    // 1736302609
 	TimeMS         int64        `json:"t_ms,omitempty"` // 1736302609050
-}
-
-// SeriesConfig represents the configuration for a series
-type SeriesConfig struct {
-	RTUpdatePeriod int `json:"rt_update_period"` // 0
 }
