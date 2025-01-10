@@ -131,28 +131,11 @@ func main() {
 			// slog.Debug("data", "data", data.Params)
 			switch data.Method {
 			case tvwsclient.MethodQuoteData:
-				// please make the data.Param to tvwsclient.QuoteData
-				if len(data.Params) >= 2 {
-					// Convert the interface{} back to JSON
-					paramJSON, err := json.Marshal(data.Params[1])
-					if err != nil {
-						// return nil, fmt.Errorf("failed to marshal param: %w", err)
-						slog.Error("failed to marshal param", "error", err)
-					}
-
-					// Unmarshal into QuoteData
-					var quoteData tvwsclient.QuoteData
-					if err := json.Unmarshal(paramJSON, &quoteData); err != nil {
-						slog.Error("failed to unmarshal quote data", "error", err)
-					}
-					quoteDataMessage := tvwsclient.QuoteDataMessage{
-						QuoteSessionID: data.Params[0].(string),
-						Data:           quoteData,
-					}
-					// if quote, ok := data.Params[1].(tvwsclient.QuoteData); ok {
-					slog.Info("received quote data", "data", quoteDataMessage)
-					// }
+				quoteDataMessage, err := tvwsclient.NewQuoteDataMessage(data.Params)
+				if err != nil {
+					slog.Error("failed to create quote data message", "error", err)
 				}
+				slog.Info("received quote data", "data", quoteDataMessage)
 			case tvwsclient.MethodSeriesLoading:
 				if len(data.Params) >= 3 {
 					seriesLoadingMessage := tvwsclient.SeriesLoadingMessage{

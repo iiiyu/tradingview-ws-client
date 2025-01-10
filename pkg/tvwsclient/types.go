@@ -1,5 +1,10 @@
 package tvwsclient
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // Option represents a client option
 type Option func(*Client)
 
@@ -266,4 +271,31 @@ type DuData struct {
 type DuSeriesData struct {
 	I int       `json:"i"` // Index
 	V []float64 `json:"v"` // [timestamp, open, high, low, close, volume]
+}
+
+func NewQuoteDataMessage(params []interface{}) (*QuoteDataMessage, error) {
+	if len(params) < 2 {
+		return nil, fmt.Errorf("insufficient parameters")
+	}
+
+	sessionID, ok := params[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid session ID type")
+	}
+
+	// Convert the interface{} to QuoteData through JSON marshaling
+	paramJSON, err := json.Marshal(params[1])
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal param: %w", err)
+	}
+
+	var quoteData QuoteData
+	if err := json.Unmarshal(paramJSON, &quoteData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal quote data: %w", err)
+	}
+
+	return &QuoteDataMessage{
+		QuoteSessionID: sessionID,
+		Data:           quoteData,
+	}, nil
 }
