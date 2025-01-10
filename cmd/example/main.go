@@ -70,8 +70,6 @@ func main() {
 
 	go func() {
 		qsSession := tvwsclient.GenerateSession("qs_")
-		// csSession := tvwsclient.GenerateSession("cs_")
-		// csSymbol := "BINANCE:BTCUSDT"
 
 		if err := tvwsclient.SendQuoteCreateSessionMessage(client, qsSession); err != nil {
 			slog.Error("failed to send quote create session message ", "error", err)
@@ -81,9 +79,11 @@ func main() {
 			slog.Error("failed to send quote set fields session message ", "error", err)
 		}
 
-		// if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession, csSymbol, "10S", 10); err != nil {
-		// 	slog.Error("failed to subscription chart session", "error", err)
-		// }
+		csSession := tvwsclient.GenerateSession("cs_")
+		csSymbol := "BINANCE:BTCUSDT"
+		if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession, csSymbol, "10S", 10); err != nil {
+			slog.Error("failed to subscription chart session", "error", err)
+		}
 
 		// csSession2 := tvwsclient.GenerateSession("cs_")
 		// csSymbol2 := "BINANCE:BTCUSDT"
@@ -110,9 +110,9 @@ func main() {
 		// if err := tvwsclient.SendCreateSeriesMessage(client, csSession, "1"); err != nil {
 		// 	slog.Error("failed to send create series message ", "error", err)
 		// }
-		if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
-			slog.Error("failed to send add quote symbols session message ", "error", err)
-		}
+		// if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
+		// 	slog.Error("failed to send add quote symbols session message ", "error", err)
+		// }
 		// if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, []string{"BINANCE:SOLUSDT", "BINANCE:ETHUSDT"}); err != nil {
 		// 	slog.Error("failed to send add quote symbols session message ", "error", err)
 		// }
@@ -137,66 +137,17 @@ func main() {
 				}
 				slog.Info("received quote data", "data", quoteDataMessage)
 			case tvwsclient.MethodSeriesLoading:
-				if len(data.Params) >= 3 {
-					seriesLoadingMessage := tvwsclient.SeriesLoadingMessage{
-						ChartSessionID: data.Params[0].(string),
-						SeriesID:       data.Params[1].(string),
-						SeriesSet:      data.Params[2].(string),
-					}
-
-					// Optional fields
-					if len(data.Params) >= 4 {
-						seriesLoadingMessage.SeriesNumber = data.Params[3].(string)
-					}
-
-					if len(data.Params) >= 5 {
-						// Convert the interface{} back to JSON for SeriesConfig
-						if configData, ok := data.Params[4].(map[string]interface{}); ok {
-							if period, ok := configData["rt_update_period"].(float64); ok {
-								seriesLoadingMessage.SeriesConfig = tvwsclient.SeriesConfig{
-									RTUpdatePeriod: int(period),
-								}
-							}
-						}
-					}
-
-					slog.Info("received series loading",
-						"session", seriesLoadingMessage.ChartSessionID,
-						"series", seriesLoadingMessage.SeriesID,
-						"series set", seriesLoadingMessage.SeriesSet,
-						"series number", seriesLoadingMessage.SeriesNumber,
-						"config", seriesLoadingMessage.SeriesConfig,
-					)
+				seriesLoadingMessage, err := tvwsclient.NewSeriesLoadingMessage(data.Params)
+				if err != nil {
+					slog.Error("failed to create series loading message", "error", err)
 				}
+				slog.Info("received series loading", "data", seriesLoadingMessage)
 			case tvwsclient.MethodSymbolResolved:
-				if len(data.Params) >= 3 {
-					// Convert the interface{} back to JSON for SymbolInfo
-					paramJSON, err := json.Marshal(data.Params[2])
-					if err != nil {
-						slog.Error("failed to marshal symbol info param", "error", err)
-						continue
-					}
-
-					var symbolInfo tvwsclient.SymbolInfo
-					if err := json.Unmarshal(paramJSON, &symbolInfo); err != nil {
-						slog.Error("failed to unmarshal symbol info", "error", err)
-						continue
-					}
-
-					symbolResolvedMessage := tvwsclient.SymbolResolvedMessage{
-						ChartSessionID: data.Params[0].(string),
-						SeriesID:       data.Params[1].(string),
-						SymbolInfo:     symbolInfo,
-					}
-
-					slog.Info("received symbol resolved",
-						"session", symbolResolvedMessage.ChartSessionID,
-						"series", symbolResolvedMessage.SeriesID,
-						"symbol_name", symbolResolvedMessage.SymbolInfo.Name,
-						"exchange", symbolResolvedMessage.SymbolInfo.Exchange,
-						"description", symbolResolvedMessage.SymbolInfo.Description,
-					)
+				symbolResolvedMessage, err := tvwsclient.NewSymbolResolvedMessage(data.Params)
+				if err != nil {
+					slog.Error("failed to create symbol resolved message", "error", err)
 				}
+				slog.Info("received symbol resolved", "data", symbolResolvedMessage)
 
 			case tvwsclient.MethodTimescaleUpdate:
 				if len(data.Params) >= 2 {

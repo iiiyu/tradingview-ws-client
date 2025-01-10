@@ -299,3 +299,74 @@ func NewQuoteDataMessage(params []interface{}) (*QuoteDataMessage, error) {
 		Data:           quoteData,
 	}, nil
 }
+
+func NewSeriesLoadingMessage(params []interface{}) (*SeriesLoadingMessage, error) {
+	if len(params) < 3 {
+		return nil, fmt.Errorf("insufficient parameters: expected at least 3, got %d", len(params))
+	}
+
+	// Convert required fields
+	chartSessionID, ok1 := params[0].(string)
+	seriesID, ok2 := params[1].(string)
+	seriesSet, ok3 := params[2].(string)
+
+	if !ok1 || !ok2 || !ok3 {
+		return nil, fmt.Errorf("invalid parameter types for required fields")
+	}
+
+	message := &SeriesLoadingMessage{
+		ChartSessionID: chartSessionID,
+		SeriesID:       seriesID,
+		SeriesSet:      seriesSet,
+	}
+
+	// Handle optional SeriesNumber
+	if len(params) >= 4 {
+		if seriesNumber, ok := params[3].(string); ok {
+			message.SeriesNumber = seriesNumber
+		}
+	}
+
+	// Handle optional SeriesConfig
+	if len(params) >= 5 {
+		if configData, ok := params[4].(map[string]interface{}); ok {
+			if period, ok := configData["rt_update_period"].(float64); ok {
+				message.SeriesConfig = SeriesConfig{
+					RTUpdatePeriod: int(period),
+				}
+			}
+		}
+	}
+
+	return message, nil
+}
+
+func NewSymbolResolvedMessage(params []interface{}) (*SymbolResolvedMessage, error) {
+	if len(params) < 3 {
+		return nil, fmt.Errorf("insufficient parameters: expected at least 3, got %d", len(params))
+	}
+
+	// Extract chart session ID and series ID
+	chartSessionID, ok1 := params[0].(string)
+	seriesID, ok2 := params[1].(string)
+	if !ok1 || !ok2 {
+		return nil, fmt.Errorf("invalid parameter types for session ID or series ID")
+	}
+
+	// Convert the symbol info interface{} to SymbolInfo through JSON marshaling
+	paramJSON, err := json.Marshal(params[2])
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal symbol info param: %w", err)
+	}
+
+	var symbolInfo SymbolInfo
+	if err := json.Unmarshal(paramJSON, &symbolInfo); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal symbol info: %w", err)
+	}
+
+	return &SymbolResolvedMessage{
+		ChartSessionID: chartSessionID,
+		SeriesID:       seriesID,
+		SymbolInfo:     symbolInfo,
+	}, nil
+}
