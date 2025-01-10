@@ -127,8 +127,8 @@ func main() {
 	for {
 		select {
 		case data := <-dataChan:
-			slog.Debug("data", "data.Method", data.Method)
-			slog.Debug("data", "data", data.Params)
+			// slog.Debug("data", "data.Method", data.Method)
+			// slog.Debug("data", "data", data.Params)
 			switch data.Method {
 			case "qsd":
 				// please make the data.Param to tvwsclient.QuoteData
@@ -263,11 +263,67 @@ func main() {
 					}
 				}
 			case "series_completed":
-				if len(data.Params) >= 2 {
+				if len(data.Params) >= 5 {
+					// Create SeriesCompletedMessage
+					seriesCompletedMessage := tvwsclient.SeriesCompletedMessage{
+						ChartSessionID: data.Params[0].(string),
+						SeriesID:       data.Params[1].(string),
+						Status:         data.Params[2].(string),
+						SeriesSet:      data.Params[3].(string),
+					}
+
+					// Handle the SeriesConfig which is the 5th parameter
+					if configData, ok := data.Params[4].(map[string]interface{}); ok {
+						if period, ok := configData["rt_update_period"].(float64); ok {
+							seriesCompletedMessage.Config = tvwsclient.SeriesConfig{
+								RTUpdatePeriod: int(period),
+							}
+						}
+					}
+
 					slog.Info("received series completed",
-						"session", data.Params[0],
-						"message", data.Params[1],
+						"session", seriesCompletedMessage.ChartSessionID,
+						"series", seriesCompletedMessage.SeriesID,
+						"status", seriesCompletedMessage.Status,
+						"series_set", seriesCompletedMessage.SeriesSet,
+						"config", seriesCompletedMessage.Config,
 					)
+				}
+			case "du":
+				if len(data.Params) >= 2 {
+					// Convert the interface{} back to JSON
+					paramJSON, err := json.Marshal(data.Params[1])
+					if err != nil {
+						slog.Error("failed to marshal du param", "error", err)
+						continue
+					}
+
+					var duData tvwsclient.DuData
+					if err := json.Unmarshal(paramJSON, &duData); err != nil {
+						slog.Error("failed to unmarshal du data", "error", err)
+						continue
+					}
+
+					duMessage := tvwsclient.DuMessage{
+						ChartSessionID: data.Params[0].(string),
+						Data:           duData,
+					}
+
+					// Now you can access the data like this:
+					if len(duMessage.Data.SDS1.S) > 0 {
+						candle := duMessage.Data.SDS1.S[0]
+						slog.Info("received du update",
+							"session", duMessage.ChartSessionID,
+							"bar_close_time", duMessage.Data.SDS1.LBS.BarCloseTime,
+							"index", candle.I,
+							"timestamp", candle.V[0],
+							"open", candle.V[1],
+							"high", candle.V[2],
+							"low", candle.V[3],
+							"close", candle.V[4],
+							"volume", candle.V[5],
+						)
+					}
 				}
 			}
 

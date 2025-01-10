@@ -193,3 +193,28 @@ type SeriesCompletedMessage struct {
 	Time           int64        `json:"t,omitempty"`    // 1736302609
 	TimeMS         int64        `json:"t_ms,omitempty"` // 1736302609050
 }
+
+// DuMessage represents the data update message structure
+type DuMessage struct {
+	ChartSessionID string `json:"0"` // "cs_lZqOBD1Jtvjb"
+	Data           DuData `json:"1"` // The nested data object
+}
+
+type DuData struct {
+	SDS1 struct {
+		LBS struct {
+			BarCloseTime int64 `json:"bar_close_time"`
+		} `json:"lbs"`
+		NS struct {
+			D       string      `json:"d"`
+			Indexes interface{} `json:"indexes"` // Can be "nochange" or other values
+		} `json:"ns"`
+		S []DuSeriesData `json:"s"`
+		T string         `json:"t"` // Series set (e.g., "s1")
+	} `json:"sds_1"`
+}
+
+type DuSeriesData struct {
+	I int       `json:"i"` // Index
+	V []float64 `json:"v"` // [timestamp, open, high, low, close, volume]
+}
