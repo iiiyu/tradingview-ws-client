@@ -71,7 +71,7 @@ func main() {
 	go func() {
 		qsSession := tvwsclient.GenerateSession("qs_")
 		csSession := tvwsclient.GenerateSession("cs_")
-		csSymbol := "NASDAQ:AAPL"
+		csSymbol := "BINANCE:BTCUSDT"
 
 		if err := tvwsclient.SendQuoteCreateSessionMessage(client, qsSession); err != nil {
 			slog.Error("failed to send quote create session message ", "error", err)
@@ -81,21 +81,29 @@ func main() {
 			slog.Error("failed to send quote set fields session message ", "error", err)
 		}
 
-		if err := tvwsclient.SendChartCreateSessionMessage(client, csSession); err != nil {
-			slog.Error("failed to send chart create session message ", "error", err)
+		if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession, csSymbol, "10S"); err != nil {
+			slog.Error("failed to subscription chart session", "error", err)
 		}
 
-		if err := tvwsclient.SendSwitchTimezone(client, csSession); err != nil {
-			slog.Error("failed to send switch timezone message ", "error", err)
+		if err := tvwsclient.SendChartDeleteSessionMessage(client, csSession); err != nil {
+			slog.Error("failed to send chart delete session message", "error", err)
 		}
 
-		if err := tvwsclient.SendResolveSymbol(client, csSession, csSymbol); err != nil {
-			slog.Error("failed to send resolve symbol message ", "error", err)
-		}
+		// if err := tvwsclient.SendChartCreateSessionMessage(client, csSession); err != nil {
+		// 	slog.Error("failed to send chart create session message ", "error", err)
+		// }
 
-		if err := tvwsclient.SendCreateSeries(client, csSession, "10S"); err != nil {
-			slog.Error("failed to send create series message ", "error", err)
-		}
+		// if err := tvwsclient.SendSwitchTimezoneMessage(client, csSession); err != nil {
+		// 	slog.Error("failed to send switch timezone message ", "error", err)
+		// }
+
+		// if err := tvwsclient.SendResolveSymbolMessage(client, csSession, csSymbol); err != nil {
+		// 	slog.Error("failed to send resolve symbol message ", "error", err)
+		// }
+
+		// if err := tvwsclient.SendCreateSeriesMessage(client, csSession, "1"); err != nil {
+		// 	slog.Error("failed to send create series message ", "error", err)
+		// }
 		// if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
 		// 	slog.Error("failed to send add quote symbols session message ", "error", err)
 		// }
@@ -113,10 +121,8 @@ func main() {
 	for {
 		select {
 		case data := <-dataChan:
-			// slog.Debug("data", "data.Method", data.Method)
-			if len(data.Params) >= 2 {
-				slog.Debug("data", "data", data.Params[1])
-			}
+			slog.Debug("data", "data.Method", data.Method)
+			slog.Debug("data", "data", data.Params)
 			switch data.Method {
 			case "qsd":
 				// please make the data.Param to tvwsclient.QuoteData

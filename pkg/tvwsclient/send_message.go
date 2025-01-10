@@ -44,19 +44,48 @@ func SendChartCreateSessionMessage(c *Client, session string) error {
 	return sendWSMessage(c.ws, message, "chart create session message")
 }
 
-func SendSwitchTimezone(c *Client, session string) error {
+func SendSwitchTimezoneMessage(c *Client, session string) error {
 	message := fmt.Sprintf(`{"m":"switch_timezone","p":["%s","Etc/UTC"]}`, session)
 	return sendWSMessage(c.ws, message, "switch timezone message")
 }
 
-func SendResolveSymbol(c *Client, session string, symbol string) error {
-	message := fmt.Sprintf(`{"m":"resolve_symbol","p":["%s","sds_sym_1","={\"adjustment\":\"splits\",\"session\":\"regular\",\"symbol\":\"%s\"}"]}`, session, symbol)
+func SendResolveSymbolMessage(c *Client, session string, symbol string) error {
+	message := fmt.Sprintf(`{"m":"resolve_symbol","p":["%s","test","={\"adjustment\":\"splits\",\"session\":\"regular\",\"symbol\":\"%s\"}"]}`, session, symbol)
 	return sendWSMessage(c.ws, message, "resolve symbol")
 }
 
-func SendCreateSeries(c *Client, session string, interval string) error {
-	message := fmt.Sprintf(`{"m":"create_series","p":["%s","sds_1","s1","sds_sym_1","%s",10,""]}`, session, interval)
+func SendCreateSeriesMessage(c *Client, session string, interval string) error {
+	message := fmt.Sprintf(`{"m":"create_series","p":["%s","sds_1","s1","test","%s",10,""]}`, session, interval)
 	return sendWSMessage(c.ws, message, "chart create session message")
+}
+
+// Chart Messages
+func SendChartDeleteSessionMessage(c *Client, session string) error {
+	message := fmt.Sprintf(`{"m":"chart_delete_session","p":["%s",""]}`, session)
+	return sendWSMessage(c.ws, message, "chart remove session message")
+}
+
+func SubscriptionChartSessionSymbol(client *Client, session string, symbol string, interval string) error {
+	if err := SendChartCreateSessionMessage(client, session); err != nil {
+		slog.Error("failed to send chart create session message ", "error", err)
+		return err
+	}
+
+	if err := SendSwitchTimezoneMessage(client, session); err != nil {
+		slog.Error("failed to send switch timezone message ", "error", err)
+		return err
+	}
+
+	if err := SendResolveSymbolMessage(client, session, symbol); err != nil {
+		slog.Error("failed to send resolve symbol message ", "error", err)
+		return err
+	}
+
+	if err := SendCreateSeriesMessage(client, session, interval); err != nil {
+		slog.Error("failed to send create series message ", "error", err)
+		return err
+	}
+	return nil
 }
 
 // Quote Messages
