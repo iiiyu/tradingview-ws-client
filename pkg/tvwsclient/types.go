@@ -370,3 +370,93 @@ func NewSymbolResolvedMessage(params []interface{}) (*SymbolResolvedMessage, err
 		SymbolInfo:     symbolInfo,
 	}, nil
 }
+
+func NewTimescaleUpdateMessage(params []interface{}) (*TimescaleUpdateMessage, error) {
+	if len(params) < 2 {
+		return nil, fmt.Errorf("insufficient parameters: expected at least 2, got %d", len(params))
+	}
+
+	// Extract chart session ID
+	chartSessionID, ok := params[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid parameter type for chart session ID")
+	}
+
+	// Convert the data interface{} to TimescaleUpdateData through JSON marshaling
+	paramJSON, err := json.Marshal(params[1])
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal timescale update param: %w", err)
+	}
+
+	var timescaleUpdateData TimescaleUpdateData
+	if err := json.Unmarshal(paramJSON, &timescaleUpdateData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal timescale update data: %w", err)
+	}
+
+	return &TimescaleUpdateMessage{
+		ChartSessionID: chartSessionID,
+		Data:           timescaleUpdateData,
+	}, nil
+}
+
+func NewSeriesCompletedMessage(params []interface{}) (*SeriesCompletedMessage, error) {
+	if len(params) < 5 {
+		return nil, fmt.Errorf("insufficient parameters: expected at least 5, got %d", len(params))
+	}
+
+	// Extract required fields
+	chartSessionID, ok1 := params[0].(string)
+	seriesID, ok2 := params[1].(string)
+	status, ok3 := params[2].(string)
+	seriesSet, ok4 := params[3].(string)
+
+	if !ok1 || !ok2 || !ok3 || !ok4 {
+		return nil, fmt.Errorf("invalid parameter types for required fields")
+	}
+
+	message := &SeriesCompletedMessage{
+		ChartSessionID: chartSessionID,
+		SeriesID:       seriesID,
+		Status:         status,
+		SeriesSet:      seriesSet,
+	}
+
+	// Handle the SeriesConfig
+	if configData, ok := params[4].(map[string]interface{}); ok {
+		if period, ok := configData["rt_update_period"].(float64); ok {
+			message.Config = SeriesConfig{
+				RTUpdatePeriod: int(period),
+			}
+		}
+	}
+
+	return message, nil
+}
+
+func NewDuMessage(params []interface{}) (*DuMessage, error) {
+	if len(params) < 2 {
+		return nil, fmt.Errorf("insufficient parameters: expected at least 2, got %d", len(params))
+	}
+
+	// Extract chart session ID
+	chartSessionID, ok := params[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid parameter type for chart session ID")
+	}
+
+	// Convert the data interface{} to DuData through JSON marshaling
+	paramJSON, err := json.Marshal(params[1])
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal du data param: %w", err)
+	}
+
+	var duData DuData
+	if err := json.Unmarshal(paramJSON, &duData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal du data: %w", err)
+	}
+
+	return &DuMessage{
+		ChartSessionID: chartSessionID,
+		Data:           duData,
+	}, nil
+}
