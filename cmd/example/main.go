@@ -81,13 +81,19 @@ func main() {
 			slog.Error("failed to send quote set fields session message ", "error", err)
 		}
 
-		if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession, csSymbol, "10S"); err != nil {
+		if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession, csSymbol, "10S", 10); err != nil {
 			slog.Error("failed to subscription chart session", "error", err)
 		}
 
-		if err := tvwsclient.SendChartDeleteSessionMessage(client, csSession); err != nil {
-			slog.Error("failed to send chart delete session message", "error", err)
+		csSession2 := tvwsclient.GenerateSession("cs_")
+		csSymbol2 := "BINANCE:BTCUSDT"
+		if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession2, csSymbol2, "30S", 20); err != nil {
+			slog.Error("failed to subscription chart session", "error", err)
 		}
+
+		// if err := tvwsclient.SendChartDeleteSessionMessage(client, csSession); err != nil {
+		// 	slog.Error("failed to send chart delete session message", "error", err)
+		// }
 
 		// if err := tvwsclient.SendChartCreateSessionMessage(client, csSession); err != nil {
 		// 	slog.Error("failed to send chart create session message ", "error", err)
@@ -149,47 +155,48 @@ func main() {
 					// }
 				}
 			}
-			// if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
-			// 	switch data["m"] {
-			// 	case "qsd":
-			// 		if quote, ok := response[1].(tvwsclient.QuoteData); ok {
-			// 			slog.Info("received quote data",
-			// 				"symbol", quote.Name,
-			// 				"price", quote.Values.LastPrice,
-			// 				"change", quote.Values.Change,
-			// 				"volume", quote.Values.Volume,
-			// 			)
-			// 		}
-			// 	case "series_loading":
-			// 		if msg, ok := response[1].(tvwsclient.SeriesLoadingMessage); ok {
-			// 			slog.Info("received series loading",
-			// 				"session", response[0],
-			// 				"series", msg,
-			// 			)
-			// 		}
-			// 	case "symbol_resolved":
-			// 		if msg, ok := response[1].(tvwsclient.SymbolResolvedMessage); ok {
-			// 			slog.Info("received symbol resolved",
-			// 				"session", response[0],
-			// 				"message", msg,
-			// 			)
-			// 		}
-			// 	case "timescale_update":
-			// 		if msg, ok := response[1].(tvwsclient.TimescaleUpdateMessage); ok {
-			// 			slog.Info("received timescale update",
-			// 				"session", response[0],
-			// 				"message", msg,
-			// 			)
-			// 		}
-			// 	case "series_completed":
-			// 		if msg, ok := response[1].(tvwsclient.SeriesCompletedMessage); ok {
-			// 			slog.Info("received series completed",
-			// 				"session", response[0],
-			// 				"message", msg,
-			// 			)
-			// 		}
-			// 	}
-			// }
+		// if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
+		// 	switch data["m"] {
+		// 	case "qsd":
+		// 		if quote, ok := response[1].(tvwsclient.QuoteData); ok {
+		// 			slog.Info("received quote data",
+		// 				"symbol", quote.Name,
+		// 				"price", quote.Values.LastPrice,
+		// 				"change", quote.Values.Change,
+		// 				"volume", quote.Values.Volume,
+		// 			)
+		// 		}
+		// 	case "series_loading":
+		// 		if msg, ok := response[1].(tvwsclient.SeriesLoadingMessage); ok {
+		// 			slog.Info("received series loading",
+		// 				"session", response[0],
+		// 				"series", msg,
+		// 			)
+		// 		}
+		// 	case "symbol_resolved":
+		// 		if msg, ok := response[1].(tvwsclient.SymbolResolvedMessage); ok {
+		// 			slog.Info("received symbol resolved",
+		// 				"session", response[0],
+		// 				"message", msg,
+		// 			)
+		// 		}
+		// 	case "timescale_update":
+		// 		if msg, ok := response[1].(tvwsclient.TimescaleUpdateMessage); ok {
+		// 			slog.Info("received timescale update",
+		// 				"session", response[0],
+		// 				"message", msg,
+		// 			)
+		// 		}
+		// 	case "series_completed":
+		// 		if msg, ok := response[1].(tvwsclient.SeriesCompletedMessage); ok {
+		// 			slog.Info("received series completed",
+		// 				"session", response[0],
+		// 				"message", msg,
+		// 			)
+		// 		}
+		// 	}
+		// }
+
 		case <-sigChan:
 			slog.Info("shutting down...")
 			return

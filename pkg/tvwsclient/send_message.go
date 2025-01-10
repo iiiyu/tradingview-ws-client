@@ -50,12 +50,12 @@ func SendSwitchTimezoneMessage(c *Client, session string) error {
 }
 
 func SendResolveSymbolMessage(c *Client, session string, symbol string) error {
-	message := fmt.Sprintf(`{"m":"resolve_symbol","p":["%s","test","={\"adjustment\":\"splits\",\"session\":\"regular\",\"symbol\":\"%s\"}"]}`, session, symbol)
+	message := fmt.Sprintf(`{"m":"resolve_symbol","p":["%s","sds_sym_1","={\"adjustment\":\"splits\",\"session\":\"regular\",\"symbol\":\"%s\"}"]}`, session, symbol)
 	return sendWSMessage(c.ws, message, "resolve symbol")
 }
 
-func SendCreateSeriesMessage(c *Client, session string, interval string) error {
-	message := fmt.Sprintf(`{"m":"create_series","p":["%s","sds_1","s1","test","%s",10,""]}`, session, interval)
+func SendCreateSeriesMessage(c *Client, session string, interval string, seriesNumber int64) error {
+	message := fmt.Sprintf(`{"m":"create_series","p":["%s","sds_1","s1","sds_sym_1","%s",%d,""]}`, session, interval, seriesNumber)
 	return sendWSMessage(c.ws, message, "chart create session message")
 }
 
@@ -65,7 +65,7 @@ func SendChartDeleteSessionMessage(c *Client, session string) error {
 	return sendWSMessage(c.ws, message, "chart remove session message")
 }
 
-func SubscriptionChartSessionSymbol(client *Client, session string, symbol string, interval string) error {
+func SubscriptionChartSessionSymbol(client *Client, session string, symbol string, interval string, seriesNumber int64) error {
 	if err := SendChartCreateSessionMessage(client, session); err != nil {
 		slog.Error("failed to send chart create session message ", "error", err)
 		return err
@@ -81,7 +81,7 @@ func SubscriptionChartSessionSymbol(client *Client, session string, symbol strin
 		return err
 	}
 
-	if err := SendCreateSeriesMessage(client, session, interval); err != nil {
+	if err := SendCreateSeriesMessage(client, session, interval, seriesNumber); err != nil {
 		slog.Error("failed to send create series message ", "error", err)
 		return err
 	}
