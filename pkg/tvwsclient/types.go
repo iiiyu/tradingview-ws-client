@@ -21,48 +21,83 @@ type TVResponse struct {
 	TimeMS int64         `json:"t_ms,omitempty"`
 }
 
+type QuoteDataMessage struct {
+	QuoteSessionID string    `json:"0"`
+	Data           QuoteData `json:"1"`
+}
+
 // QuoteData represents the structure of quote data for a symbol
 type QuoteData struct {
-	Name   string     `json:"n"` // Symbol name (e.g., "BINANCE:BTCUSDT")
+	Name   string     `json:"n"` // Symbol name with config (e.g., "={\"adjustment\":\"splits\",\"currency-id\":\"USD\",\"session\":\"regular\",\"symbol\":\"BATS:TSLA\"}")
 	Status string     `json:"s"` // Status ("ok")
 	Values SymbolData `json:"v"` // Actual symbol data
 }
 
 // SymbolData represents the trading data for a symbol
 type SymbolData struct {
-	BaseCurrencyLogoID string   `json:"base-currency-logoid,omitempty"`
-	Change             float64  `json:"ch,omitempty"`  // Price change
-	ChangePercent      float64  `json:"chp,omitempty"` // Price change percentage
-	CurrencyLogoID     string   `json:"currency-logoid,omitempty"`
-	CurrencyCode       string   `json:"currency_code,omitempty"` // Currency (USD, USDT, etc.)
-	CurrencyID         string   `json:"currency_id,omitempty"`
-	BaseCurrencyID     string   `json:"base_currency_id,omitempty"`
-	CurrentSession     string   `json:"current_session,omitempty"` // Session status
-	Description        string   `json:"description,omitempty"`     // Full name
-	Exchange           string   `json:"exchange,omitempty"`        // Exchange name
-	Format             string   `json:"format,omitempty"`
-	Fractional         bool     `json:"fractional,omitempty"`
-	IsTradable         bool     `json:"is_tradable,omitempty"`
-	Language           string   `json:"language,omitempty"`
-	LocalDescription   string   `json:"local_description,omitempty"`
-	ListedExchange     string   `json:"listed_exchange,omitempty"`
-	LogoID             string   `json:"logoid,omitempty"`
-	LastPrice          float64  `json:"lp,omitempty"`      // Last price
-	LastPriceTime      int64    `json:"lp_time,omitempty"` // Timestamp
-	MinMove            int      `json:"minmov,omitempty"`
-	MinMove2           int      `json:"minmove2,omitempty"`
-	OriginalName       string   `json:"original_name,omitempty"`
-	PriceScale         int      `json:"pricescale,omitempty"` // Price scale factor
-	ProName            string   `json:"pro_name,omitempty"`
-	ShortName          string   `json:"short_name,omitempty"` // Symbol short name
-	Type               string   `json:"type,omitempty"`       // Asset type (stock, spot, etc.)
-	TypeSpecs          []string `json:"typespecs,omitempty"`
-	UpdateMode         string   `json:"update_mode,omitempty"`
-	Volume             float64  `json:"volume,omitempty"` // Trading volume
-	VariableTickSize   string   `json:"variable_tick_size,omitempty"`
-	ValueUnitID        string   `json:"value_unit_id,omitempty"`
-	UnitID             string   `json:"unit_id,omitempty"`
-	Measure            string   `json:"measure,omitempty"`
+	BaseCurrencyLogoID  string   `json:"base-currency-logoid,omitempty"`
+	Change              float64  `json:"ch,omitempty"`  // Price change
+	ChangePercent       float64  `json:"chp,omitempty"` // Price change percentage
+	CurrencyLogoID      string   `json:"currency-logoid,omitempty"`
+	CurrencyCode        string   `json:"currency_code,omitempty"` // Currency (USD, USDT, etc.)
+	CurrencyID          string   `json:"currency_id,omitempty"`
+	BaseCurrencyID      string   `json:"base_currency_id,omitempty"`
+	CurrentSession      string   `json:"current_session,omitempty"` // Session status
+	Description         string   `json:"description,omitempty"`     // Full name
+	Exchange            string   `json:"exchange,omitempty"`        // Exchange name
+	Format              string   `json:"format,omitempty"`
+	Fractional          bool     `json:"fractional,omitempty"`
+	IsTradable          bool     `json:"is_tradable,omitempty"`
+	Language            string   `json:"language,omitempty"`
+	LocalDescription    string   `json:"local_description,omitempty"`
+	ListedExchange      string   `json:"listed_exchange,omitempty"`
+	LogoID              string   `json:"logoid,omitempty"`
+	LastPrice           float64  `json:"lp,omitempty"`      // Last price
+	LastPriceTime       int64    `json:"lp_time,omitempty"` // Timestamp
+	MinMove             int      `json:"minmov,omitempty"`
+	MinMove2            int      `json:"minmove2,omitempty"`
+	OriginalName        string   `json:"original_name,omitempty"`
+	PriceScale          int      `json:"pricescale,omitempty"` // Price scale factor
+	ProName             string   `json:"pro_name,omitempty"`
+	ShortName           string   `json:"short_name,omitempty"` // Symbol short name
+	Type                string   `json:"type,omitempty"`       // Asset type (stock, spot, etc.)
+	TypeSpecs           []string `json:"typespecs,omitempty"`
+	UpdateMode          string   `json:"update_mode,omitempty"`
+	Volume              float64  `json:"volume,omitempty"` // Trading volume
+	VariableTickSize    string   `json:"variable_tick_size,omitempty"`
+	ValueUnitID         string   `json:"value_unit_id,omitempty"`
+	UnitID              string   `json:"unit_id,omitempty"`
+	Measure             string   `json:"measure,omitempty"`
+	RTCTime             int64    `json:"rtc_time,omitempty"`
+	RegularCloseTime    int64    `json:"regular_close_time,omitempty"`
+	OpenTime            int64    `json:"open_time,omitempty"`
+	RegularClose        float64  `json:"regular_close,omitempty"`
+	OpenPrice           float64  `json:"open_price,omitempty"`
+	HighPrice           float64  `json:"high_price,omitempty"`
+	LowPrice            float64  `json:"low_price,omitempty"`
+	AllTimeHigh         float64  `json:"all_time_high,omitempty"`
+	AllTimeHighDay      int64    `json:"all_time_high_day,omitempty"`
+	AllTimeLow          float64  `json:"all_time_low,omitempty"`
+	AllTimeLowDay       int64    `json:"all_time_low_day,omitempty"`
+	AverageVolume       float64  `json:"average_volume,omitempty"`
+	Beta1Year           float64  `json:"beta_1_year,omitempty"`
+	PriceEarningsTTM    float64  `json:"price_earnings_ttm,omitempty"`
+	EarningsPerShareTTM float64  `json:"earnings_per_share_basic_ttm,omitempty"`
+	EarningsPerShareFQ  float64  `json:"earnings_per_share_fq,omitempty"`
+	MarketCapCalc       float64  `json:"market_cap_calc,omitempty"`
+	TotalRevenue        float64  `json:"total_revenue,omitempty"`
+
+	// Rates and broker information
+	RatesMC     map[string]interface{} `json:"rates_mc,omitempty"`
+	RatesTTM    map[string]interface{} `json:"rates_ttm,omitempty"`
+	RatesFY     map[string]interface{} `json:"rates_fy,omitempty"`
+	BrokerNames map[string]string      `json:"broker_names,omitempty"`
+
+	// Options information
+	OptionsInfo map[string]interface{} `json:"options-info,omitempty"`
+
+	// Trading sessions
+	Subsessions []SubsessionInfo `json:"subsessions,omitempty"`
 }
 
 // SeriesLoadingMessage represents the series_loading message

@@ -46,13 +46,13 @@ func main() {
 	defer client.Close()
 
 	// Example symbols
-	// symbols := []string{
-	// 	"NASDAQ:AAPL",
-	// 	// "BINANCE:BTCUSDT",
-	// 	// "HKEX:700",
-	// 	// "HKEX_DLY:1810",
-	// }
-	// slog.Debug("starting to receive trade data", "symbols", symbols)
+	symbols := []string{
+		"NASDAQ:AAPL",
+		"BINANCE:BTCUSDT",
+		// "HKEX:700",
+		// "HKEX_DLY:1810",
+	}
+	slog.Debug("starting to receive trade data", "symbols", symbols)
 
 	// Setup signal handling
 	sigChan := make(chan os.Signal, 1)
@@ -70,8 +70,8 @@ func main() {
 
 	go func() {
 		qsSession := tvwsclient.GenerateSession("qs_")
-		csSession := tvwsclient.GenerateSession("cs_")
-		csSymbol := "BINANCE:BTCUSDT"
+		// csSession := tvwsclient.GenerateSession("cs_")
+		// csSymbol := "BINANCE:BTCUSDT"
 
 		if err := tvwsclient.SendQuoteCreateSessionMessage(client, qsSession); err != nil {
 			slog.Error("failed to send quote create session message ", "error", err)
@@ -81,15 +81,15 @@ func main() {
 			slog.Error("failed to send quote set fields session message ", "error", err)
 		}
 
-		if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession, csSymbol, "10S", 10); err != nil {
-			slog.Error("failed to subscription chart session", "error", err)
-		}
+		// if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession, csSymbol, "10S", 10); err != nil {
+		// 	slog.Error("failed to subscription chart session", "error", err)
+		// }
 
-		csSession2 := tvwsclient.GenerateSession("cs_")
-		csSymbol2 := "BINANCE:BTCUSDT"
-		if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession2, csSymbol2, "30S", 20); err != nil {
-			slog.Error("failed to subscription chart session", "error", err)
-		}
+		// csSession2 := tvwsclient.GenerateSession("cs_")
+		// csSymbol2 := "BINANCE:BTCUSDT"
+		// if err := tvwsclient.SubscriptionChartSessionSymbol(client, csSession2, csSymbol2, "30S", 20); err != nil {
+		// 	slog.Error("failed to subscription chart session", "error", err)
+		// }
 
 		// if err := tvwsclient.SendChartDeleteSessionMessage(client, csSession); err != nil {
 		// 	slog.Error("failed to send chart delete session message", "error", err)
@@ -110,9 +110,9 @@ func main() {
 		// if err := tvwsclient.SendCreateSeriesMessage(client, csSession, "1"); err != nil {
 		// 	slog.Error("failed to send create series message ", "error", err)
 		// }
-		// if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
-		// 	slog.Error("failed to send add quote symbols session message ", "error", err)
-		// }
+		if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
+			slog.Error("failed to send add quote symbols session message ", "error", err)
+		}
 		// if err := tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, []string{"BINANCE:SOLUSDT", "BINANCE:ETHUSDT"}); err != nil {
 		// 	slog.Error("failed to send add quote symbols session message ", "error", err)
 		// }
@@ -145,13 +145,12 @@ func main() {
 					if err := json.Unmarshal(paramJSON, &quoteData); err != nil {
 						slog.Error("failed to unmarshal quote data", "error", err)
 					}
+					quoteDataMessage := tvwsclient.QuoteDataMessage{
+						QuoteSessionID: data.Params[0].(string),
+						Data:           quoteData,
+					}
 					// if quote, ok := data.Params[1].(tvwsclient.QuoteData); ok {
-					slog.Info("received quote data",
-						"symbol", quoteData.Name,
-						"price", quoteData.Values.LastPrice,
-						"change", quoteData.Values.Change,
-						"volume", quoteData.Values.Volume,
-					)
+					slog.Info("received quote data", "data", quoteDataMessage)
 					// }
 				}
 			case tvwsclient.MethodSeriesLoading:
