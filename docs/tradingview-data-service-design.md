@@ -2,13 +2,13 @@
 
 1. Utilize TradingView WebSocket client package
 2. Provide 6 APIs:
-   - Add Symbol
-   - Remove Symbol
-   - Get list of active symbols
-   - Check symbol status
-   - Get Symbol Last Price
-   - Get Symbol Candlestick Data
-3. Store data in SQLite database
+   - Add Symbol(DB)
+   - Remove Symbol(DB)
+   - Get list of active symbols(DB)
+   - Check symbol status(is active or not)(DB)
+   - Get Symbol Last Price(from key-value store)
+   - Get Symbol Candlestick Data(from PostgreSQL database)
+3. Store data in PostgreSQL database
 4. Cache last price in key-value store
 
 ## Benefits
@@ -16,74 +16,66 @@
 1. Unlimited API calls
 2. Free of charge
 
-## Database Design
-
-### Database Schema for Stock Data
+## Data Design
 
 1. Tables Overview
-   Symbols: Stores information about stock symbols.
-   CandlestickData: Stores candlestick data for each stock symbol and time period.
-   TimePeriods: Stores different time periods (e.g., 1 minute, 5 minutes, 1 hour).
-2. Table Definitions
-   Symbols Table
+
+   - Active Symbols: Maintains mapping between TradingView session IDs and symbols, where each symbol is identified by exchange and ticker. Each session ID maps to a unique combination of exchange, symbol, and time period.
+   - Candlestick Data: Stores OHLCV (Open, High, Low, Close, Volume) data for each symbol across multiple timeframes. Each symbol maintains data for four time periods (10 seconds, 1 minute, 5 minutes, 1 day). The combination of exchange, symbol, and time period serves as a unique identifier.
+
+2. Key-Value Store Overview
+   - Real-time Market Data: Maintains the latest market data for each symbol (identified by exchange and ticker), including:
+     - Last update timestamp
+     - Opening price
+     - High price
+     - Low price
+     - Closing price
+     - Trading volume
+
+### SQL Schema
 
 ```sql
-CREATE TABLE Symbols (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-symbol TEXT UNIQUE NOT NULL,
-name TEXT NOT NULL
+-- Create enum for timeframes
+-- Enable UUID extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create enum for timeframes (unchanged)
+CREATE TYPE timeframe AS ENUM ('10s', '1m', '5m', '1d');
+
+-- Renamed from trading_sessions to active_sessions
+CREATE TABLE active_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id VARCHAR(50) NOT NULL,
+    exchange VARCHAR(50) NOT NULL,
+    symbol VARCHAR(50) NOT NULL,
+    timeframe timeframe NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT false,  -- Added enabled field
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(session_id)
 );
-```
 
-id: Primary key for reference.
-symbol: Stock ticker symbol (e.g., AAPL for Apple).
-name: Full name of the stock or company.
-TimePeriods Table
+-- Update candles table to use UUID
+CREATE TABLE candles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    exchange VARCHAR(50) NOT NULL,
+    symbol VARCHAR(50) NOT NULL,
+    timeframe timeframe NOT NULL,
+    timestamp BIGINT NOT NULL,  -- Unix timestamp from TradingView
+    open DECIMAL(20, 8) NOT NULL,
+    high DECIMAL(20, 8) NOT NULL,
+    low DECIMAL(20, 8) NOT NULL,
+    close DECIMAL(20, 8) NOT NULL,
+    volume DECIMAL(20, 8) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
-```sql
-CREATE TABLE TimePeriods (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-period TEXT UNIQUE NOT NULL
+    -- Create a unique constraint to prevent duplicate entries
+    UNIQUE(exchange, symbol, timeframe, timestamp)
 );
+
+-- Rest of the schema remains the same
+CREATE INDEX idx_candles_symbol ON candles(exchange, symbol);
+CREATE INDEX idx_candles_timestamp ON candles(timestamp);
+CREATE INDEX idx_candles_lookup ON candles(exchange, symbol, timeframe, timestamp);
+
 ```
-
-id: Primary key for reference.
-period: Time period name (e.g., "1min", "5min", "1hour").
-CandlestickData Table
-
-```sql
-CREATE TABLE CandlestickData (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
-symbol_id INTEGER NOT NULL,
-period_id INTEGER NOT NULL,
-open REAL NOT NULL,
-high REAL NOT NULL,
-low REAL NOT NULL,
-close REAL NOT NULL,
-volume REAL NOT NULL,
-timestamp DATETIME NOT NULL,
-FOREIGN KEY (symbol_id) REFERENCES Symbols(id),
-FOREIGN KEY (period_id) REFERENCES TimePeriods(id),
-UNIQUE (symbol_id, period_id, timestamp)
-);
-```
-
-symbol_id: Foreign key linking to the Symbols table.
-period_id: Foreign key linking to the TimePeriods table.
-open: Opening price.
-high: Highest price.
-low: Lowest price.
-close: Closing price.
-volume: Trading volume.
-timestamp: Date and time of the candlestick.
-
-### Considerations
-
-Indexes: Create indexes on frequently queried columns (symbol_id, period_id, timestamp) for faster lookups.
-
-```sql
-CREATE INDEX idx_candlestick_symbol_period_timestamp ON CandlestickData(symbol_id, period_id, timestamp);
-```
-
-Data Retention: Implement a cleanup script to remove old data if storage becomes an issue.
-Scalability: For larger datasets, consider partitioning by symbol or time period in your application logic.
