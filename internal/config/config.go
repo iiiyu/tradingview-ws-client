@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
-	"os"
+
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -20,18 +22,44 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
+	// Initialize flags
+	pflag.String("db-host", "", "Database host")
+	pflag.String("db-port", "", "Database port")
+	pflag.String("db-user", "", "Database user")
+	pflag.String("db-password", "", "Database password")
+	pflag.String("db-name", "", "Database name")
+	pflag.String("db-sslmode", "", "Database SSL mode")
+	pflag.Parse()
+
+	// Initialize Viper
+	viper.SetEnvPrefix("") // This allows us to use environment variables without a prefix
+	viper.AutomaticEnv()   // Automatically read environment variables
+
+	// Bind flags to viper
+	viper.BindPFlags(pflag.CommandLine)
+
+	// Set up environment variable mappings
+	viper.SetEnvPrefix("")
+	viper.BindEnv("db-host", "DB_HOST")
+	viper.BindEnv("db-port", "DB_PORT")
+	viper.BindEnv("db-user", "DB_USER")
+	viper.BindEnv("db-password", "DB_PASSWORD")
+	viper.BindEnv("db-name", "DB_NAME")
+	viper.BindEnv("db-sslmode", "DB_SSLMODE")
+	viper.BindEnv("tradingview-auth-token", "TRADINGVIEW_AUTH_TOKEN")
+
 	cfg := &Config{}
 
 	// Load database configuration
-	cfg.Database.Host = getEnvOrDefault("DB_HOST", "192.168.1.48")
-	cfg.Database.Port = getEnvOrDefault("DB_PORT", "6543")
-	cfg.Database.User = getEnvOrDefault("DB_USER", "postgres")
-	cfg.Database.Password = getEnvOrDefault("DB_PASSWORD", "uUE1yOke9wIqSAwL7bZBfKJHb5WqDnzmPIc0tlg9rF86hb5m7djpKDHulKmGy3Iy")
-	cfg.Database.DBName = getEnvOrDefault("DB_NAME", "postgres")
-	cfg.Database.SSLMode = getEnvOrDefault("DB_SSLMODE", "disable")
+	cfg.Database.Host = viper.GetString("db-host")
+	cfg.Database.Port = viper.GetString("db-port")
+	cfg.Database.User = viper.GetString("db-user")
+	cfg.Database.Password = viper.GetString("db-password")
+	cfg.Database.DBName = viper.GetString("db-name")
+	cfg.Database.SSLMode = viper.GetString("db-sslmode")
 
 	// Load TradingView configuration
-	cfg.TradingView.AuthToken = os.Getenv("TRADINGVIEW_AUTH_TOKEN")
+	cfg.TradingView.AuthToken = viper.GetString("tradingview-auth-token")
 	if cfg.TradingView.AuthToken == "" {
 		return nil, fmt.Errorf("TRADINGVIEW_AUTH_TOKEN environment variable not set")
 	}
@@ -48,11 +76,4 @@ func (c *Config) GetDSN() string {
 		c.Database.Password,
 		c.Database.SSLMode,
 	)
-}
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
