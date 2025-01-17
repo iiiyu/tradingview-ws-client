@@ -6,7 +6,11 @@ A Go library for receiving real-time market data from TradingView's WebSocket AP
 
 - Real-time market data streaming with comprehensive quote data
 - Support for multiple symbols and exchanges (NASDAQ, BINANCE, HKEX, etc.)
-- Automatic session management and WebSocket connection handling
+- Automatic WebSocket connection handling with reconnection support
+- Configurable client options including:
+  - Custom WebSocket URL
+  - Custom headers
+  - Maximum retry attempts
 - Rich market data fields including:
   - Last price and timestamp
   - Price change and percentage
@@ -16,12 +20,29 @@ A Go library for receiving real-time market data from TradingView's WebSocket AP
   - Session status
 - Dynamic symbol management (add/remove symbols during runtime)
 - Structured logging with slog
-- Configurable client options
+- Database integration support (PostgreSQL)
 
 ## Installation
 
 ```bash
 go get github.com/iiiyu/tradingview-ws-client
+```
+
+## Configuration
+
+The client supports configuration through environment variables and flags:
+
+```env
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_NAME=tradingview
+DB_SSLMODE=disable
+
+# TradingView Configuration
+TRADINGVIEW_AUTH_TOKEN=your-auth-token
 ```
 
 ## Usage
@@ -32,55 +53,59 @@ go get github.com/iiiyu/tradingview-ws-client
 package main
 
 import (
-    "github.com/iiiyu/tradingview-ws-client/pkg/tvwsclient"
+    "log"
+    tvws "github.com/iiiyu/tradingview-ws-client/pkg/tvwsclient"
 )
 
 func main() {
-    // Create a new client with your TradingView auth token
-    client, err := tvwsclient.NewClient("your-auth-token")
+    // Create a new client with options
+    client, err := tvws.NewClient(
+        "your-auth-token",
+        // Optional: Configure custom options
+        // tvws.WithMaxRetries(5),
+        // tvws.WithCustomHeaders(headers),
+    )
     if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
     defer client.Close()
 
     // Create data channel for receiving updates
-    dataChan := make(chan map[string]interface{})
+    dataChan := make(chan tvws.TVResponse)
 
-    // Start receiving data
-    go client.ReadMessage(dataChan)
+    // Start receiving data in a goroutine
+    go func() {
+        if err := client.ReadMessage(dataChan); err != nil {
+            log.Printf("Error reading messages: %v", err)
+        }
+    }()
 
     // Setup quote session
-    qsSession := tvwsclient.GenerateSession("qs_")
-    tvwsclient.SendQuoteCreateSessionMessage(client, qsSession)
-    tvwsclient.SendQuoteSetFieldsMessage(client, qsSession)
+    qsSession := tvws.GenerateSession("qs_")
+    if err := tvws.SendQuoteCreateSessionMessage(client, qsSession); err != nil {
+        log.Fatal(err)
+    }
+    if err := tvws.SendQuoteSetFieldsMessage(client, qsSession); err != nil {
+        log.Fatal(err)
+    }
 
     // Add symbols to watch
     symbols := []string{"NASDAQ:AAPL", "BINANCE:BTCUSDT"}
-    tvwsclient.SendQuoteAddSymbolsMessage(client, qsSession, symbols)
+    if err := tvws.SendQuoteAddSymbolsMessage(client, qsSession, symbols); err != nil {
+        log.Fatal(err)
+    }
 
     // Process incoming data
     for data := range dataChan {
-        if response, ok := data["p"].([]interface{}); ok && len(response) >= 2 {
-            if quote, ok := response[1].(tvwsclient.QuoteData); ok {
-                // Handle quote data
-                _ = quote.Name        // Symbol name
-                _ = quote.Values.LastPrice   // Current price
-                _ = quote.Values.Change     // Price change
-                _ = quote.Values.Volume     // Trading volume
-            }
-        }
+        // Handle the data based on your needs
+        log.Printf("Received data: %+v", data)
     }
 }
 ```
 
-### Configuration
+### Error Handling
 
-The client supports configuration through YAML files:
-
-```yaml
-auth:
-  token: "your-tradingview-auth-token"
-```
+The client includes built-in error handling and reconnection logic. You can customize the retry behavior using the `WithMaxRetries` option when creating the client.
 
 ## License
 
