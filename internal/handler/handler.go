@@ -36,6 +36,9 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 
 	// Candlestick data routes
 	app.Get("/candles/:exchange/:symbol/:timeframe/:limit", h.handleGetCandles)
+
+	// Quote data routes
+	app.Get("/quotes/:exchange/:symbol", h.handleGetQuoteData)
 }
 
 func (h *Handler) handleHome(c *fiber.Ctx) error {
@@ -51,7 +54,6 @@ func (h *Handler) handleHealth(c *fiber.Ctx) error {
 
 func (h *Handler) handleCreateSymbol(c *fiber.Ctx) error {
 	var input struct {
-		// SessionID string `json:"session_id"`
 		Exchange  string `json:"exchange"`
 		Symbol    string `json:"symbol"`
 		Timeframe string `json:"timeframe"`
@@ -215,4 +217,17 @@ func (h *Handler) handleGetCandles(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(candles)
+}
+
+func (h *Handler) handleGetQuoteData(c *fiber.Ctx) error {
+	exchange := c.Params("exchange")
+	symbol := c.Params("symbol")
+	querySymbol := fmt.Sprintf("%s:%s", exchange, symbol)
+
+	quoteData, err := h.tvService.GetQuoteData(querySymbol)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(quoteData)
 }

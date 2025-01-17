@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
+	"github.com/dgraph-io/ristretto"
 	"github.com/iiiyu/tradingview-ws-client/ent"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 	"github.com/iiiyu/tradingview-ws-client/ent/candle"
@@ -13,12 +15,21 @@ import (
 type TradingViewService struct {
 	client   *ent.Client
 	tvClient *tvwsclient.Client
+	cache    *ristretto.Cache
+}
+type CachedQuoteData struct {
+	Name      string  `json:"name"`
+	Change    float64 `json:"ch"`
+	LastPrice float64 `json:"lp"`
+	Timestamp int64   `json:"lp_time"`
+	Volume    float64 `json:"volume"`
 }
 
-func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client) *TradingViewService {
+func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, cache *ristretto.Cache) *TradingViewService {
 	return &TradingViewService{
 		client:   dbClient,
 		tvClient: tvClient,
+		cache:    cache,
 	}
 }
 
@@ -87,6 +98,51 @@ func (s *TradingViewService) ProcessDataUpdate(msg *tvwsclient.DuMessage) error 
 	return nil
 }
 
+func (s *TradingViewService) ProcessQuoteData(msg *tvwsclient.QuoteDataMessage) error {
+	// Extract symbol name from the message
+	symbolName := msg.Data.Name
+
+	// Try to get existing cached data
+	var cachedData *CachedQuoteData
+	if existingValue, found := s.cache.Get(symbolName); found {
+		if existing, ok := existingValue.(*CachedQuoteData); ok {
+			cachedData = existing
+		}
+	}
+
+	// If no existing data, create new
+	if cachedData == nil {
+		cachedData = &CachedQuoteData{Name: symbolName}
+	}
+
+	// Update only non-zero values
+	if msg.Data.Values.Change != 0 {
+		cachedData.Change = msg.Data.Values.Change
+	}
+	if msg.Data.Values.LastPrice != 0 {
+		cachedData.LastPrice = msg.Data.Values.LastPrice
+	}
+	if msg.Data.Values.LastPriceTime != 0 {
+		cachedData.Timestamp = msg.Data.Values.LastPriceTime
+	}
+	if msg.Data.Values.Volume != 0 {
+		cachedData.Volume = msg.Data.Values.Volume
+	}
+
+	// Set the data in cache
+	// The third parameter (1) is the cost of storing this item
+	if !s.cache.Set(symbolName, cachedData, 1) {
+		slog.Warn("failed to set quote data in cache",
+			"symbol", symbolName,
+			"data", cachedData)
+	}
+
+	// Wait for cache write
+	s.cache.Wait()
+
+	return nil
+}
+
 func (s *TradingViewService) processCandleData(session *ent.ActiveSession, data []float64) error {
 	timestamp := int64(data[0])
 	open := data[1]
@@ -139,4 +195,18 @@ func (s *TradingViewService) processCandleData(session *ent.ActiveSession, data 
 	}
 
 	return err
+}
+
+func (s *TradingViewService) GetQuoteData(symbol string) (*CachedQuoteData, error) {
+	value, found := s.cache.Get(symbol)
+	if !found {
+		return nil, fmt.Errorf("quote data not found for symbol: %s", symbol)
+	}
+
+	data, ok := value.(*CachedQuoteData)
+	if !ok {
+		return nil, fmt.Errorf("invalid cache data type for symbol: %s", symbol)
+	}
+
+	return data, nil
 }

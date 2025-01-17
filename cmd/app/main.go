@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/dgraph-io/ristretto"
 	"github.com/gofiber/fiber/v2"
 	_ "github.com/lib/pq"
 
@@ -49,8 +50,18 @@ func main() {
 	}
 	defer tvClient.Close()
 
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e7,     // number of keys to track frequency of (10M)
+		MaxCost:     1 << 30, // maximum cost of cache (1GB)
+		BufferItems: 64,      // number of keys per Get buffer
+	})
+	if err != nil {
+		slog.Error("failed to create cache", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize service
-	tvService := service.NewTradingViewService(client, tvClient)
+	tvService := service.NewTradingViewService(client, tvClient, cache)
 
 	// Create data channel for receiving updates
 	dataChan := make(chan tvwsclient.TVResponse)
@@ -72,7 +83,12 @@ func main() {
 					slog.Error("failed to parse quote data", "error", err)
 					continue
 				}
-				slog.Debug("received quote data", "data", quoteDataMessage)
+
+				if err := tvService.ProcessQuoteData(quoteDataMessage); err != nil {
+					slog.Error("failed to process quote data", "error", err)
+				}
+
+				// slog.Debug("received quote data", "data", quoteDataMessage)
 
 			case tvwsclient.MethodTimescaleUpdate:
 				timescaleUpdateMessage, err := tvwsclient.NewTimescaleUpdateMessage(data.Params)
