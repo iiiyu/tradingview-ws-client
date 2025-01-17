@@ -121,3 +121,19 @@ func SendQuoteRemoveSymbolsMessage(c *Client, session string, symbols []string) 
 	)
 	return sendWSMessage(c.ws, message, "quote remove symbols message")
 }
+
+func SubscriptionQuoteSessionSymbol(client *Client, session string, symbol string) error {
+	if err := SendQuoteCreateSessionMessage(client, session); err != nil {
+		return err
+	}
+
+	if err := SendQuoteSetFieldsMessage(client, session); err != nil {
+		return err
+	}
+
+	if err := SendQuoteAddSymbolsMessage(client, session, []string{symbol}); err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -39,6 +39,7 @@ type ActiveSessionMutation struct {
 	session_id    *string
 	exchange      *string
 	symbol        *string
+	_type         *activesession.Type
 	timeframe     *activesession.Timeframe
 	enabled       *bool
 	created_at    *time.Time
@@ -261,6 +262,42 @@ func (m *ActiveSessionMutation) ResetSymbol() {
 	m.symbol = nil
 }
 
+// SetType sets the "type" field.
+func (m *ActiveSessionMutation) SetType(a activesession.Type) {
+	m._type = &a
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *ActiveSessionMutation) GetType() (r activesession.Type, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the ActiveSession entity.
+// If the ActiveSession object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ActiveSessionMutation) OldType(ctx context.Context) (v activesession.Type, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *ActiveSessionMutation) ResetType() {
+	m._type = nil
+}
+
 // SetTimeframe sets the "timeframe" field.
 func (m *ActiveSessionMutation) SetTimeframe(a activesession.Timeframe) {
 	m.timeframe = &a
@@ -439,7 +476,7 @@ func (m *ActiveSessionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ActiveSessionMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.session_id != nil {
 		fields = append(fields, activesession.FieldSessionID)
 	}
@@ -448,6 +485,9 @@ func (m *ActiveSessionMutation) Fields() []string {
 	}
 	if m.symbol != nil {
 		fields = append(fields, activesession.FieldSymbol)
+	}
+	if m._type != nil {
+		fields = append(fields, activesession.FieldType)
 	}
 	if m.timeframe != nil {
 		fields = append(fields, activesession.FieldTimeframe)
@@ -475,6 +515,8 @@ func (m *ActiveSessionMutation) Field(name string) (ent.Value, bool) {
 		return m.Exchange()
 	case activesession.FieldSymbol:
 		return m.Symbol()
+	case activesession.FieldType:
+		return m.GetType()
 	case activesession.FieldTimeframe:
 		return m.Timeframe()
 	case activesession.FieldEnabled:
@@ -498,6 +540,8 @@ func (m *ActiveSessionMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldExchange(ctx)
 	case activesession.FieldSymbol:
 		return m.OldSymbol(ctx)
+	case activesession.FieldType:
+		return m.OldType(ctx)
 	case activesession.FieldTimeframe:
 		return m.OldTimeframe(ctx)
 	case activesession.FieldEnabled:
@@ -535,6 +579,13 @@ func (m *ActiveSessionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSymbol(v)
+		return nil
+	case activesession.FieldType:
+		v, ok := value.(activesession.Type)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
 		return nil
 	case activesession.FieldTimeframe:
 		v, ok := value.(activesession.Timeframe)
@@ -621,6 +672,9 @@ func (m *ActiveSessionMutation) ResetField(name string) error {
 		return nil
 	case activesession.FieldSymbol:
 		m.ResetSymbol()
+		return nil
+	case activesession.FieldType:
+		m.ResetType()
 		return nil
 	case activesession.FieldTimeframe:
 		m.ResetTimeframe()

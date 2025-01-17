@@ -280,6 +280,26 @@ func SymbolContainsFold(v string) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldContainsFold(FieldSymbol, v))
 }
 
+// TypeEQ applies the EQ predicate on the "type" field.
+func TypeEQ(v Type) predicate.ActiveSession {
+	return predicate.ActiveSession(sql.FieldEQ(FieldType, v))
+}
+
+// TypeNEQ applies the NEQ predicate on the "type" field.
+func TypeNEQ(v Type) predicate.ActiveSession {
+	return predicate.ActiveSession(sql.FieldNEQ(FieldType, v))
+}
+
+// TypeIn applies the In predicate on the "type" field.
+func TypeIn(vs ...Type) predicate.ActiveSession {
+	return predicate.ActiveSession(sql.FieldIn(FieldType, vs...))
+}
+
+// TypeNotIn applies the NotIn predicate on the "type" field.
+func TypeNotIn(vs ...Type) predicate.ActiveSession {
+	return predicate.ActiveSession(sql.FieldNotIn(FieldType, vs...))
+}
+
 // TimeframeEQ applies the EQ predicate on the "timeframe" field.
 func TimeframeEQ(v Timeframe) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldEQ(FieldTimeframe, v))

@@ -39,9 +39,23 @@ func (asc *ActiveSessionCreate) SetSymbol(s string) *ActiveSessionCreate {
 	return asc
 }
 
+// SetType sets the "type" field.
+func (asc *ActiveSessionCreate) SetType(a activesession.Type) *ActiveSessionCreate {
+	asc.mutation.SetType(a)
+	return asc
+}
+
 // SetTimeframe sets the "timeframe" field.
 func (asc *ActiveSessionCreate) SetTimeframe(a activesession.Timeframe) *ActiveSessionCreate {
 	asc.mutation.SetTimeframe(a)
+	return asc
+}
+
+// SetNillableTimeframe sets the "timeframe" field if the given value is not nil.
+func (asc *ActiveSessionCreate) SetNillableTimeframe(a *activesession.Timeframe) *ActiveSessionCreate {
+	if a != nil {
+		asc.SetTimeframe(*a)
+	}
 	return asc
 }
 
@@ -136,6 +150,10 @@ func (asc *ActiveSessionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (asc *ActiveSessionCreate) defaults() {
+	if _, ok := asc.mutation.Timeframe(); !ok {
+		v := activesession.DefaultTimeframe
+		asc.mutation.SetTimeframe(v)
+	}
 	if _, ok := asc.mutation.Enabled(); !ok {
 		v := activesession.DefaultEnabled
 		asc.mutation.SetEnabled(v)
@@ -164,6 +182,14 @@ func (asc *ActiveSessionCreate) check() error {
 	}
 	if _, ok := asc.mutation.Symbol(); !ok {
 		return &ValidationError{Name: "symbol", err: errors.New(`ent: missing required field "ActiveSession.symbol"`)}
+	}
+	if _, ok := asc.mutation.GetType(); !ok {
+		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "ActiveSession.type"`)}
+	}
+	if v, ok := asc.mutation.GetType(); ok {
+		if err := activesession.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "ActiveSession.type": %w`, err)}
+		}
 	}
 	if _, ok := asc.mutation.Timeframe(); !ok {
 		return &ValidationError{Name: "timeframe", err: errors.New(`ent: missing required field "ActiveSession.timeframe"`)}
@@ -228,6 +254,10 @@ func (asc *ActiveSessionCreate) createSpec() (*ActiveSession, *sqlgraph.CreateSp
 	if value, ok := asc.mutation.Symbol(); ok {
 		_spec.SetField(activesession.FieldSymbol, field.TypeString, value)
 		_node.Symbol = value
+	}
+	if value, ok := asc.mutation.GetType(); ok {
+		_spec.SetField(activesession.FieldType, field.TypeEnum, value)
+		_node.Type = value
 	}
 	if value, ok := asc.mutation.Timeframe(); ok {
 		_spec.SetField(activesession.FieldTimeframe, field.TypeEnum, value)

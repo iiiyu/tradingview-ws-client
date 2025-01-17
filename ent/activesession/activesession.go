@@ -21,6 +21,8 @@ const (
 	FieldExchange = "exchange"
 	// FieldSymbol holds the string denoting the symbol field in the database.
 	FieldSymbol = "symbol"
+	// FieldType holds the string denoting the type field in the database.
+	FieldType = "type"
 	// FieldTimeframe holds the string denoting the timeframe field in the database.
 	FieldTimeframe = "timeframe"
 	// FieldEnabled holds the string denoting the enabled field in the database.
@@ -39,6 +41,7 @@ var Columns = []string{
 	FieldSessionID,
 	FieldExchange,
 	FieldSymbol,
+	FieldType,
 	FieldTimeframe,
 	FieldEnabled,
 	FieldCreatedAt,
@@ -68,8 +71,34 @@ var (
 	DefaultID func() uuid.UUID
 )
 
+// Type defines the type for the "type" enum field.
+type Type string
+
+// Type values.
+const (
+	TypeCandle Type = "candle"
+	TypeQuote  Type = "quote"
+)
+
+func (_type Type) String() string {
+	return string(_type)
+}
+
+// TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
+func TypeValidator(_type Type) error {
+	switch _type {
+	case TypeCandle, TypeQuote:
+		return nil
+	default:
+		return fmt.Errorf("activesession: invalid enum value for type field: %q", _type)
+	}
+}
+
 // Timeframe defines the type for the "timeframe" enum field.
 type Timeframe string
+
+// Timeframe10S is the default value of the Timeframe enum.
+const DefaultTimeframe = Timeframe10S
 
 // Timeframe values.
 const (
@@ -114,6 +143,11 @@ func ByExchange(opts ...sql.OrderTermOption) OrderOption {
 // BySymbol orders the results by the symbol field.
 func BySymbol(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSymbol, opts...).ToFunc()
+}
+
+// ByType orders the results by the type field.
+func ByType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldType, opts...).ToFunc()
 }
 
 // ByTimeframe orders the results by the timeframe field.

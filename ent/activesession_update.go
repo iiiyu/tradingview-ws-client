@@ -70,6 +70,20 @@ func (asu *ActiveSessionUpdate) SetNillableSymbol(s *string) *ActiveSessionUpdat
 	return asu
 }
 
+// SetType sets the "type" field.
+func (asu *ActiveSessionUpdate) SetType(a activesession.Type) *ActiveSessionUpdate {
+	asu.mutation.SetType(a)
+	return asu
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (asu *ActiveSessionUpdate) SetNillableType(a *activesession.Type) *ActiveSessionUpdate {
+	if a != nil {
+		asu.SetType(*a)
+	}
+	return asu
+}
+
 // SetTimeframe sets the "timeframe" field.
 func (asu *ActiveSessionUpdate) SetTimeframe(a activesession.Timeframe) *ActiveSessionUpdate {
 	asu.mutation.SetTimeframe(a)
@@ -161,6 +175,11 @@ func (asu *ActiveSessionUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (asu *ActiveSessionUpdate) check() error {
+	if v, ok := asu.mutation.GetType(); ok {
+		if err := activesession.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "ActiveSession.type": %w`, err)}
+		}
+	}
 	if v, ok := asu.mutation.Timeframe(); ok {
 		if err := activesession.TimeframeValidator(v); err != nil {
 			return &ValidationError{Name: "timeframe", err: fmt.Errorf(`ent: validator failed for field "ActiveSession.timeframe": %w`, err)}
@@ -189,6 +208,9 @@ func (asu *ActiveSessionUpdate) sqlSave(ctx context.Context) (n int, err error) 
 	}
 	if value, ok := asu.mutation.Symbol(); ok {
 		_spec.SetField(activesession.FieldSymbol, field.TypeString, value)
+	}
+	if value, ok := asu.mutation.GetType(); ok {
+		_spec.SetField(activesession.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := asu.mutation.Timeframe(); ok {
 		_spec.SetField(activesession.FieldTimeframe, field.TypeEnum, value)
@@ -260,6 +282,20 @@ func (asuo *ActiveSessionUpdateOne) SetSymbol(s string) *ActiveSessionUpdateOne 
 func (asuo *ActiveSessionUpdateOne) SetNillableSymbol(s *string) *ActiveSessionUpdateOne {
 	if s != nil {
 		asuo.SetSymbol(*s)
+	}
+	return asuo
+}
+
+// SetType sets the "type" field.
+func (asuo *ActiveSessionUpdateOne) SetType(a activesession.Type) *ActiveSessionUpdateOne {
+	asuo.mutation.SetType(a)
+	return asuo
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (asuo *ActiveSessionUpdateOne) SetNillableType(a *activesession.Type) *ActiveSessionUpdateOne {
+	if a != nil {
+		asuo.SetType(*a)
 	}
 	return asuo
 }
@@ -368,6 +404,11 @@ func (asuo *ActiveSessionUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (asuo *ActiveSessionUpdateOne) check() error {
+	if v, ok := asuo.mutation.GetType(); ok {
+		if err := activesession.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "ActiveSession.type": %w`, err)}
+		}
+	}
 	if v, ok := asuo.mutation.Timeframe(); ok {
 		if err := activesession.TimeframeValidator(v); err != nil {
 			return &ValidationError{Name: "timeframe", err: fmt.Errorf(`ent: validator failed for field "ActiveSession.timeframe": %w`, err)}
@@ -413,6 +454,9 @@ func (asuo *ActiveSessionUpdateOne) sqlSave(ctx context.Context) (_node *ActiveS
 	}
 	if value, ok := asuo.mutation.Symbol(); ok {
 		_spec.SetField(activesession.FieldSymbol, field.TypeString, value)
+	}
+	if value, ok := asuo.mutation.GetType(); ok {
+		_spec.SetField(activesession.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := asuo.mutation.Timeframe(); ok {
 		_spec.SetField(activesession.FieldTimeframe, field.TypeEnum, value)

@@ -18,15 +18,15 @@ func init() {
 	activesessionFields := schema.ActiveSession{}.Fields()
 	_ = activesessionFields
 	// activesessionDescEnabled is the schema descriptor for enabled field.
-	activesessionDescEnabled := activesessionFields[5].Descriptor()
+	activesessionDescEnabled := activesessionFields[6].Descriptor()
 	// activesession.DefaultEnabled holds the default value on creation for the enabled field.
 	activesession.DefaultEnabled = activesessionDescEnabled.Default.(bool)
 	// activesessionDescCreatedAt is the schema descriptor for created_at field.
-	activesessionDescCreatedAt := activesessionFields[6].Descriptor()
+	activesessionDescCreatedAt := activesessionFields[7].Descriptor()
 	// activesession.DefaultCreatedAt holds the default value on creation for the created_at field.
 	activesession.DefaultCreatedAt = activesessionDescCreatedAt.Default.(func() time.Time)
 	// activesessionDescUpdatedAt is the schema descriptor for updated_at field.
-	activesessionDescUpdatedAt := activesessionFields[7].Descriptor()
+	activesessionDescUpdatedAt := activesessionFields[8].Descriptor()
 	// activesession.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	activesession.DefaultUpdatedAt = activesessionDescUpdatedAt.Default.(func() time.Time)
 	// activesession.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

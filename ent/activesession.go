@@ -24,6 +24,8 @@ type ActiveSession struct {
 	Exchange string `json:"exchange,omitempty"`
 	// Symbol holds the value of the "symbol" field.
 	Symbol string `json:"symbol,omitempty"`
+	// Type holds the value of the "type" field.
+	Type activesession.Type `json:"type,omitempty"`
 	// Timeframe holds the value of the "timeframe" field.
 	Timeframe activesession.Timeframe `json:"timeframe,omitempty"`
 	// Enabled holds the value of the "enabled" field.
@@ -42,7 +44,7 @@ func (*ActiveSession) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case activesession.FieldEnabled:
 			values[i] = new(sql.NullBool)
-		case activesession.FieldSessionID, activesession.FieldExchange, activesession.FieldSymbol, activesession.FieldTimeframe:
+		case activesession.FieldSessionID, activesession.FieldExchange, activesession.FieldSymbol, activesession.FieldType, activesession.FieldTimeframe:
 			values[i] = new(sql.NullString)
 		case activesession.FieldCreatedAt, activesession.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -86,6 +88,12 @@ func (as *ActiveSession) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field symbol", values[i])
 			} else if value.Valid {
 				as.Symbol = value.String
+			}
+		case activesession.FieldType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field type", values[i])
+			} else if value.Valid {
+				as.Type = activesession.Type(value.String)
 			}
 		case activesession.FieldTimeframe:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -155,6 +163,9 @@ func (as *ActiveSession) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("symbol=")
 	builder.WriteString(as.Symbol)
+	builder.WriteString(", ")
+	builder.WriteString("type=")
+	builder.WriteString(fmt.Sprintf("%v", as.Type))
 	builder.WriteString(", ")
 	builder.WriteString("timeframe=")
 	builder.WriteString(fmt.Sprintf("%v", as.Timeframe))

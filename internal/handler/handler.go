@@ -51,54 +51,83 @@ func (h *Handler) handleHealth(c *fiber.Ctx) error {
 
 func (h *Handler) handleCreateSymbol(c *fiber.Ctx) error {
 	var input struct {
-		SessionID string `json:"session_id"`
+		// SessionID string `json:"session_id"`
 		Exchange  string `json:"exchange"`
 		Symbol    string `json:"symbol"`
 		Timeframe string `json:"timeframe"`
+		Type      string `json:"type"`
 	}
 
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Create chart session
-	csSession := tvwsclient.GenerateSession("cs_")
-	symbol := fmt.Sprintf("%s:%s", input.Exchange, input.Symbol)
+	switch activesession.Type(input.Type) {
+	case activesession.TypeCandle:
+		// Create chart session
+		csSession := tvwsclient.GenerateSession("cs_")
+		symbol := fmt.Sprintf("%s:%s", input.Exchange, input.Symbol)
 
-	// Convert timeframe to TradingView format
-	var interval string
-	switch activesession.Timeframe(input.Timeframe) {
-	case activesession.Timeframe10S:
-		interval = "10S"
-	case activesession.Timeframe1:
-		interval = "1"
-	case activesession.Timeframe5:
-		interval = "5"
-	case activesession.Timeframe1D:
-		interval = "1D"
-	default:
-		return c.Status(400).JSON(fiber.Map{"error": "invalid timeframe"})
+		// Convert timeframe to TradingView format
+		var interval string
+		switch activesession.Timeframe(input.Timeframe) {
+		case activesession.Timeframe10S:
+			interval = "10S"
+		case activesession.Timeframe1:
+			interval = "1"
+		case activesession.Timeframe5:
+			interval = "5"
+		case activesession.Timeframe1D:
+			interval = "1D"
+		default:
+			return c.Status(400).JSON(fiber.Map{"error": "invalid timeframe"})
+		}
+
+		// Subscribe to TradingView
+		if err := tvwsclient.SubscriptionChartSessionSymbol(h.tvService.GetTVClient(), csSession, symbol, interval, 10); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "failed to subscribe to TradingView: " + err.Error()})
+		}
+
+		// Save to database
+		session, err := h.tvService.GetDBClient().ActiveSession.Create().
+			SetSessionID(csSession).
+			SetExchange(input.Exchange).
+			SetSymbol(input.Symbol).
+			SetTimeframe(activesession.Timeframe(input.Timeframe)).
+			SetType(activesession.Type(input.Type)).
+			SetEnabled(true).
+			Save(c.Context())
+
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.JSON(session)
+	case activesession.TypeQuote:
+		// Create quote session
+		qsSession := tvwsclient.GenerateSession("qs_")
+		symbol := fmt.Sprintf("%s:%s", input.Exchange, input.Symbol)
+
+		// Subscribe to TradingView
+		if err := tvwsclient.SubscriptionQuoteSessionSymbol(h.tvService.GetTVClient(), qsSession, symbol); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "failed to subscribe to TradingView: " + err.Error()})
+		}
+
+		// Save to database
+		session, err := h.tvService.GetDBClient().ActiveSession.Create().
+			SetSessionID(qsSession).
+			SetExchange(input.Exchange).
+			SetSymbol(input.Symbol).
+			SetType(activesession.Type(input.Type)).
+			SetEnabled(true).
+			Save(c.Context())
+
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(session)
 	}
-
-	// Subscribe to TradingView
-	if err := tvwsclient.SubscriptionChartSessionSymbol(h.tvService.GetTVClient(), csSession, symbol, interval, 10); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to subscribe to TradingView: " + err.Error()})
-	}
-
-	// Save to database
-	session, err := h.tvService.GetDBClient().ActiveSession.Create().
-		SetSessionID(csSession).
-		SetExchange(input.Exchange).
-		SetSymbol(input.Symbol).
-		SetTimeframe(activesession.Timeframe(input.Timeframe)).
-		SetEnabled(true).
-		Save(c.Context())
-
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	return c.JSON(session)
+	return c.JSON(fiber.Map{"error": "invalid type"})
 }
 
 func (h *Handler) handleDeleteSymbol(c *fiber.Ctx) error {
