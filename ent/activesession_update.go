@@ -173,7 +173,7 @@ func (asu *ActiveSessionUpdate) sqlSave(ctx context.Context) (n int, err error) 
 	if err := asu.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(activesession.Table, activesession.Columns, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(activesession.Table, activesession.Columns, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeUUID))
 	if ps := asu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -380,7 +380,7 @@ func (asuo *ActiveSessionUpdateOne) sqlSave(ctx context.Context) (_node *ActiveS
 	if err := asuo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(activesession.Table, activesession.Columns, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(activesession.Table, activesession.Columns, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeUUID))
 	id, ok := asuo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "ActiveSession.id" for update`)}

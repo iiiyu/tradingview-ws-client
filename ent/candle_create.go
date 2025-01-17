@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/candle"
 )
 
@@ -88,6 +89,20 @@ func (cc *CandleCreate) SetNillableCreatedAt(t *time.Time) *CandleCreate {
 	return cc
 }
 
+// SetID sets the "id" field.
+func (cc *CandleCreate) SetID(u uuid.UUID) *CandleCreate {
+	cc.mutation.SetID(u)
+	return cc
+}
+
+// SetNillableID sets the "id" field if the given value is not nil.
+func (cc *CandleCreate) SetNillableID(u *uuid.UUID) *CandleCreate {
+	if u != nil {
+		cc.SetID(*u)
+	}
+	return cc
+}
+
 // Mutation returns the CandleMutation object of the builder.
 func (cc *CandleCreate) Mutation() *CandleMutation {
 	return cc.mutation
@@ -126,6 +141,10 @@ func (cc *CandleCreate) defaults() {
 	if _, ok := cc.mutation.CreatedAt(); !ok {
 		v := candle.DefaultCreatedAt()
 		cc.mutation.SetCreatedAt(v)
+	}
+	if _, ok := cc.mutation.ID(); !ok {
+		v := candle.DefaultID()
+		cc.mutation.SetID(v)
 	}
 }
 
@@ -180,8 +199,13 @@ func (cc *CandleCreate) sqlSave(ctx context.Context) (*Candle, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
+			_node.ID = *id
+		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+			return nil, err
+		}
+	}
 	cc.mutation.id = &_node.ID
 	cc.mutation.done = true
 	return _node, nil
@@ -190,8 +214,12 @@ func (cc *CandleCreate) sqlSave(ctx context.Context) (*Candle, error) {
 func (cc *CandleCreate) createSpec() (*Candle, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Candle{config: cc.config}
-		_spec = sqlgraph.NewCreateSpec(candle.Table, sqlgraph.NewFieldSpec(candle.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(candle.Table, sqlgraph.NewFieldSpec(candle.FieldID, field.TypeUUID))
 	)
+	if id, ok := cc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = &id
+	}
 	if value, ok := cc.mutation.Exchange(); ok {
 		_spec.SetField(candle.FieldExchange, field.TypeString, value)
 		_node.Exchange = value
@@ -280,10 +308,6 @@ func (ccb *CandleCreateBulk) Save(ctx context.Context) ([]*Candle, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

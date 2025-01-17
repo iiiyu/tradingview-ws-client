@@ -5,6 +5,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // ActiveSession holds the schema definition for the ActiveSession entity.
@@ -15,6 +16,8 @@ type ActiveSession struct {
 // Fields of the ActiveSession.
 func (ActiveSession) Fields() []ent.Field {
 	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Default(uuid.New),
 		field.String("session_id").Unique(),
 		field.String("exchange"),
 		field.String("symbol"),

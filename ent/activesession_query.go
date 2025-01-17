@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 	"github.com/iiiyu/tradingview-ws-client/ent/predicate"
 )
@@ -82,8 +83,8 @@ func (asq *ActiveSessionQuery) FirstX(ctx context.Context) *ActiveSession {
 
 // FirstID returns the first ActiveSession ID from the query.
 // Returns a *NotFoundError when no ActiveSession ID was found.
-func (asq *ActiveSessionQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (asq *ActiveSessionQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = asq.Limit(1).IDs(setContextOp(ctx, asq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -95,7 +96,7 @@ func (asq *ActiveSessionQuery) FirstID(ctx context.Context) (id int, err error) 
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (asq *ActiveSessionQuery) FirstIDX(ctx context.Context) int {
+func (asq *ActiveSessionQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := asq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -133,8 +134,8 @@ func (asq *ActiveSessionQuery) OnlyX(ctx context.Context) *ActiveSession {
 // OnlyID is like Only, but returns the only ActiveSession ID in the query.
 // Returns a *NotSingularError when more than one ActiveSession ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (asq *ActiveSessionQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (asq *ActiveSessionQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = asq.Limit(2).IDs(setContextOp(ctx, asq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -150,7 +151,7 @@ func (asq *ActiveSessionQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (asq *ActiveSessionQuery) OnlyIDX(ctx context.Context) int {
+func (asq *ActiveSessionQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := asq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -178,7 +179,7 @@ func (asq *ActiveSessionQuery) AllX(ctx context.Context) []*ActiveSession {
 }
 
 // IDs executes the query and returns a list of ActiveSession IDs.
-func (asq *ActiveSessionQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (asq *ActiveSessionQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if asq.ctx.Unique == nil && asq.path != nil {
 		asq.Unique(true)
 	}
@@ -190,7 +191,7 @@ func (asq *ActiveSessionQuery) IDs(ctx context.Context) (ids []int, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (asq *ActiveSessionQuery) IDsX(ctx context.Context) []int {
+func (asq *ActiveSessionQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := asq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -365,7 +366,7 @@ func (asq *ActiveSessionQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (asq *ActiveSessionQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(activesession.Table, activesession.Columns, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(activesession.Table, activesession.Columns, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeUUID))
 	_spec.From = asq.sql
 	if unique := asq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

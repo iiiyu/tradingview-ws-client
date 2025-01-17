@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 )
 
@@ -16,7 +17,7 @@ import (
 type ActiveSession struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID uuid.UUID `json:"id,omitempty"`
 	// SessionID holds the value of the "session_id" field.
 	SessionID string `json:"session_id,omitempty"`
 	// Exchange holds the value of the "exchange" field.
@@ -41,12 +42,12 @@ func (*ActiveSession) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case activesession.FieldEnabled:
 			values[i] = new(sql.NullBool)
-		case activesession.FieldID:
-			values[i] = new(sql.NullInt64)
 		case activesession.FieldSessionID, activesession.FieldExchange, activesession.FieldSymbol, activesession.FieldTimeframe:
 			values[i] = new(sql.NullString)
 		case activesession.FieldCreatedAt, activesession.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
+		case activesession.FieldID:
+			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -63,11 +64,11 @@ func (as *ActiveSession) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case activesession.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value != nil {
+				as.ID = *value
 			}
-			as.ID = int(value.Int64)
 		case activesession.FieldSessionID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field session_id", values[i])

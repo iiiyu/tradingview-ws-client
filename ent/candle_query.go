@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/candle"
 	"github.com/iiiyu/tradingview-ws-client/ent/predicate"
 )
@@ -82,8 +83,8 @@ func (cq *CandleQuery) FirstX(ctx context.Context) *Candle {
 
 // FirstID returns the first Candle ID from the query.
 // Returns a *NotFoundError when no Candle ID was found.
-func (cq *CandleQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (cq *CandleQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = cq.Limit(1).IDs(setContextOp(ctx, cq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
@@ -95,7 +96,7 @@ func (cq *CandleQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (cq *CandleQuery) FirstIDX(ctx context.Context) int {
+func (cq *CandleQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := cq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -133,8 +134,8 @@ func (cq *CandleQuery) OnlyX(ctx context.Context) *Candle {
 // OnlyID is like Only, but returns the only Candle ID in the query.
 // Returns a *NotSingularError when more than one Candle ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (cq *CandleQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (cq *CandleQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+	var ids []uuid.UUID
 	if ids, err = cq.Limit(2).IDs(setContextOp(ctx, cq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -150,7 +151,7 @@ func (cq *CandleQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (cq *CandleQuery) OnlyIDX(ctx context.Context) int {
+func (cq *CandleQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := cq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -178,7 +179,7 @@ func (cq *CandleQuery) AllX(ctx context.Context) []*Candle {
 }
 
 // IDs executes the query and returns a list of Candle IDs.
-func (cq *CandleQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (cq *CandleQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if cq.ctx.Unique == nil && cq.path != nil {
 		cq.Unique(true)
 	}
@@ -190,7 +191,7 @@ func (cq *CandleQuery) IDs(ctx context.Context) (ids []int, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (cq *CandleQuery) IDsX(ctx context.Context) []int {
+func (cq *CandleQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := cq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -365,7 +366,7 @@ func (cq *CandleQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (cq *CandleQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(candle.Table, candle.Columns, sqlgraph.NewFieldSpec(candle.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(candle.Table, candle.Columns, sqlgraph.NewFieldSpec(candle.FieldID, field.TypeUUID))
 	_spec.From = cq.sql
 	if unique := cq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

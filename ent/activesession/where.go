@@ -6,51 +6,52 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/predicate"
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int) predicate.ActiveSession {
+func ID(id uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int) predicate.ActiveSession {
+func IDEQ(id uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int) predicate.ActiveSession {
+func IDNEQ(id uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int) predicate.ActiveSession {
+func IDIn(ids ...uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int) predicate.ActiveSession {
+func IDNotIn(ids ...uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int) predicate.ActiveSession {
+func IDGT(id uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int) predicate.ActiveSession {
+func IDGTE(id uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int) predicate.ActiveSession {
+func IDLT(id uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int) predicate.ActiveSession {
+func IDLTE(id uuid.UUID) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldLTE(FieldID, id))
 }
 

@@ -10,7 +10,7 @@ import (
 var (
 	// ActiveSessionsColumns holds the columns for the "active_sessions" table.
 	ActiveSessionsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeUUID},
 		{Name: "session_id", Type: field.TypeString, Unique: true},
 		{Name: "exchange", Type: field.TypeString},
 		{Name: "symbol", Type: field.TypeString},
@@ -27,7 +27,7 @@ var (
 	}
 	// CandlesColumns holds the columns for the "candles" table.
 	CandlesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeUUID},
 		{Name: "exchange", Type: field.TypeString},
 		{Name: "symbol", Type: field.TypeString},
 		{Name: "timeframe", Type: field.TypeEnum, Enums: []string{"10S", "1", "5", "1D"}},

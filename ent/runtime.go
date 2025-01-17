@@ -5,6 +5,7 @@ package ent
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 	"github.com/iiiyu/tradingview-ws-client/ent/candle"
 	"github.com/iiiyu/tradingview-ws-client/ent/schema"
@@ -17,23 +18,31 @@ func init() {
 	activesessionFields := schema.ActiveSession{}.Fields()
 	_ = activesessionFields
 	// activesessionDescEnabled is the schema descriptor for enabled field.
-	activesessionDescEnabled := activesessionFields[4].Descriptor()
+	activesessionDescEnabled := activesessionFields[5].Descriptor()
 	// activesession.DefaultEnabled holds the default value on creation for the enabled field.
 	activesession.DefaultEnabled = activesessionDescEnabled.Default.(bool)
 	// activesessionDescCreatedAt is the schema descriptor for created_at field.
-	activesessionDescCreatedAt := activesessionFields[5].Descriptor()
+	activesessionDescCreatedAt := activesessionFields[6].Descriptor()
 	// activesession.DefaultCreatedAt holds the default value on creation for the created_at field.
 	activesession.DefaultCreatedAt = activesessionDescCreatedAt.Default.(func() time.Time)
 	// activesessionDescUpdatedAt is the schema descriptor for updated_at field.
-	activesessionDescUpdatedAt := activesessionFields[6].Descriptor()
+	activesessionDescUpdatedAt := activesessionFields[7].Descriptor()
 	// activesession.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	activesession.DefaultUpdatedAt = activesessionDescUpdatedAt.Default.(func() time.Time)
 	// activesession.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	activesession.UpdateDefaultUpdatedAt = activesessionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// activesessionDescID is the schema descriptor for id field.
+	activesessionDescID := activesessionFields[0].Descriptor()
+	// activesession.DefaultID holds the default value on creation for the id field.
+	activesession.DefaultID = activesessionDescID.Default.(func() uuid.UUID)
 	candleFields := schema.Candle{}.Fields()
 	_ = candleFields
 	// candleDescCreatedAt is the schema descriptor for created_at field.
-	candleDescCreatedAt := candleFields[9].Descriptor()
+	candleDescCreatedAt := candleFields[10].Descriptor()
 	// candle.DefaultCreatedAt holds the default value on creation for the created_at field.
 	candle.DefaultCreatedAt = candleDescCreatedAt.Default.(func() time.Time)
+	// candleDescID is the schema descriptor for id field.
+	candleDescID := candleFields[0].Descriptor()
+	// candle.DefaultID holds the default value on creation for the id field.
+	candle.DefaultID = candleDescID.Default.(func() uuid.UUID)
 }

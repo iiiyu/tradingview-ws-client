@@ -6,6 +6,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/google/uuid"
 )
 
 // Candle holds the schema definition for the Candle entity.
@@ -16,6 +17,8 @@ type Candle struct {
 // Fields of the Candle.
 func (Candle) Fields() []ent.Field {
 	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Default(uuid.New),
 		field.String("exchange"),
 		field.String("symbol"),
 		field.Enum("timeframe").Values("10S", "1", "5", "1D"),

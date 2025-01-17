@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 )
 
@@ -86,6 +87,20 @@ func (asc *ActiveSessionCreate) SetNillableUpdatedAt(t *time.Time) *ActiveSessio
 	return asc
 }
 
+// SetID sets the "id" field.
+func (asc *ActiveSessionCreate) SetID(u uuid.UUID) *ActiveSessionCreate {
+	asc.mutation.SetID(u)
+	return asc
+}
+
+// SetNillableID sets the "id" field if the given value is not nil.
+func (asc *ActiveSessionCreate) SetNillableID(u *uuid.UUID) *ActiveSessionCreate {
+	if u != nil {
+		asc.SetID(*u)
+	}
+	return asc
+}
+
 // Mutation returns the ActiveSessionMutation object of the builder.
 func (asc *ActiveSessionCreate) Mutation() *ActiveSessionMutation {
 	return asc.mutation
@@ -133,6 +148,10 @@ func (asc *ActiveSessionCreate) defaults() {
 		v := activesession.DefaultUpdatedAt()
 		asc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := asc.mutation.ID(); !ok {
+		v := activesession.DefaultID()
+		asc.mutation.SetID(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -177,8 +196,13 @@ func (asc *ActiveSessionCreate) sqlSave(ctx context.Context) (*ActiveSession, er
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(*uuid.UUID); ok {
+			_node.ID = *id
+		} else if err := _node.ID.Scan(_spec.ID.Value); err != nil {
+			return nil, err
+		}
+	}
 	asc.mutation.id = &_node.ID
 	asc.mutation.done = true
 	return _node, nil
@@ -187,8 +211,12 @@ func (asc *ActiveSessionCreate) sqlSave(ctx context.Context) (*ActiveSession, er
 func (asc *ActiveSessionCreate) createSpec() (*ActiveSession, *sqlgraph.CreateSpec) {
 	var (
 		_node = &ActiveSession{config: asc.config}
-		_spec = sqlgraph.NewCreateSpec(activesession.Table, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(activesession.Table, sqlgraph.NewFieldSpec(activesession.FieldID, field.TypeUUID))
 	)
+	if id, ok := asc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = &id
+	}
 	if value, ok := asc.mutation.SessionID(); ok {
 		_spec.SetField(activesession.FieldSessionID, field.TypeString, value)
 		_node.SessionID = value
@@ -265,10 +293,6 @@ func (ascb *ActiveSessionCreateBulk) Save(ctx context.Context) ([]*ActiveSession
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

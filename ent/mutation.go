@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 	"github.com/iiiyu/tradingview-ws-client/ent/candle"
 	"github.com/iiiyu/tradingview-ws-client/ent/predicate"
@@ -34,7 +35,7 @@ type ActiveSessionMutation struct {
 	config
 	op            Op
 	typ           string
-	id            *int
+	id            *uuid.UUID
 	session_id    *string
 	exchange      *string
 	symbol        *string
@@ -68,7 +69,7 @@ func newActiveSessionMutation(c config, op Op, opts ...activesessionOption) *Act
 }
 
 // withActiveSessionID sets the ID field of the mutation.
-func withActiveSessionID(id int) activesessionOption {
+func withActiveSessionID(id uuid.UUID) activesessionOption {
 	return func(m *ActiveSessionMutation) {
 		var (
 			err   error
@@ -118,9 +119,15 @@ func (m ActiveSessionMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ActiveSession entities.
+func (m *ActiveSessionMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *ActiveSessionMutation) ID() (id int, exists bool) {
+func (m *ActiveSessionMutation) ID() (id uuid.UUID, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -131,12 +138,12 @@ func (m *ActiveSessionMutation) ID() (id int, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *ActiveSessionMutation) IDs(ctx context.Context) ([]int, error) {
+func (m *ActiveSessionMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int{id}, nil
+			return []uuid.UUID{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -684,7 +691,7 @@ type CandleMutation struct {
 	config
 	op            Op
 	typ           string
-	id            *int
+	id            *uuid.UUID
 	exchange      *string
 	symbol        *string
 	timeframe     *candle.Timeframe
@@ -727,7 +734,7 @@ func newCandleMutation(c config, op Op, opts ...candleOption) *CandleMutation {
 }
 
 // withCandleID sets the ID field of the mutation.
-func withCandleID(id int) candleOption {
+func withCandleID(id uuid.UUID) candleOption {
 	return func(m *CandleMutation) {
 		var (
 			err   error
@@ -777,9 +784,15 @@ func (m CandleMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Candle entities.
+func (m *CandleMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *CandleMutation) ID() (id int, exists bool) {
+func (m *CandleMutation) ID() (id uuid.UUID, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -790,12 +803,12 @@ func (m *CandleMutation) ID() (id int, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *CandleMutation) IDs(ctx context.Context) ([]int, error) {
+func (m *CandleMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int{id}, nil
+			return []uuid.UUID{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):

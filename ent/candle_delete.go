@@ -40,7 +40,7 @@ func (cd *CandleDelete) ExecX(ctx context.Context) int {
 }
 
 func (cd *CandleDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(candle.Table, sqlgraph.NewFieldSpec(candle.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewDeleteSpec(candle.Table, sqlgraph.NewFieldSpec(candle.FieldID, field.TypeUUID))
 	if ps := cd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

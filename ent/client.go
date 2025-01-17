@@ -9,6 +9,7 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/google/uuid"
 	"github.com/iiiyu/tradingview-ws-client/ent/migrate"
 
 	"entgo.io/ent"
@@ -267,7 +268,7 @@ func (c *ActiveSessionClient) UpdateOne(as *ActiveSession) *ActiveSessionUpdateO
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *ActiveSessionClient) UpdateOneID(id int) *ActiveSessionUpdateOne {
+func (c *ActiveSessionClient) UpdateOneID(id uuid.UUID) *ActiveSessionUpdateOne {
 	mutation := newActiveSessionMutation(c.config, OpUpdateOne, withActiveSessionID(id))
 	return &ActiveSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -284,7 +285,7 @@ func (c *ActiveSessionClient) DeleteOne(as *ActiveSession) *ActiveSessionDeleteO
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ActiveSessionClient) DeleteOneID(id int) *ActiveSessionDeleteOne {
+func (c *ActiveSessionClient) DeleteOneID(id uuid.UUID) *ActiveSessionDeleteOne {
 	builder := c.Delete().Where(activesession.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -301,12 +302,12 @@ func (c *ActiveSessionClient) Query() *ActiveSessionQuery {
 }
 
 // Get returns a ActiveSession entity by its id.
-func (c *ActiveSessionClient) Get(ctx context.Context, id int) (*ActiveSession, error) {
+func (c *ActiveSessionClient) Get(ctx context.Context, id uuid.UUID) (*ActiveSession, error) {
 	return c.Query().Where(activesession.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *ActiveSessionClient) GetX(ctx context.Context, id int) *ActiveSession {
+func (c *ActiveSessionClient) GetX(ctx context.Context, id uuid.UUID) *ActiveSession {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -400,7 +401,7 @@ func (c *CandleClient) UpdateOne(ca *Candle) *CandleUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *CandleClient) UpdateOneID(id int) *CandleUpdateOne {
+func (c *CandleClient) UpdateOneID(id uuid.UUID) *CandleUpdateOne {
 	mutation := newCandleMutation(c.config, OpUpdateOne, withCandleID(id))
 	return &CandleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -417,7 +418,7 @@ func (c *CandleClient) DeleteOne(ca *Candle) *CandleDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *CandleClient) DeleteOneID(id int) *CandleDeleteOne {
+func (c *CandleClient) DeleteOneID(id uuid.UUID) *CandleDeleteOne {
 	builder := c.Delete().Where(candle.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -434,12 +435,12 @@ func (c *CandleClient) Query() *CandleQuery {
 }
 
 // Get returns a Candle entity by its id.
-func (c *CandleClient) Get(ctx context.Context, id int) (*Candle, error) {
+func (c *CandleClient) Get(ctx context.Context, id uuid.UUID) (*Candle, error) {
 	return c.Query().Where(candle.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *CandleClient) GetX(ctx context.Context, id int) *Candle {
+func (c *CandleClient) GetX(ctx context.Context, id uuid.UUID) *Candle {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
