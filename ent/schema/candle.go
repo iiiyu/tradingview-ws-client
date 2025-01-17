@@ -18,7 +18,7 @@ func (Candle) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("exchange"),
 		field.String("symbol"),
-		field.Enum("timeframe").Values("10s", "1m", "5m", "1d"),
+		field.Enum("timeframe").Values("10S", "1", "5", "1D"),
 		field.Int64("timestamp"),
 		field.Float("open").GoType(float64(0)),
 		field.Float("high").GoType(float64(0)),

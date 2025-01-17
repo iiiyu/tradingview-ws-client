@@ -18,7 +18,7 @@ func (ActiveSession) Fields() []ent.Field {
 		field.String("session_id").Unique(),
 		field.String("exchange"),
 		field.String("symbol"),
-		field.Enum("timeframe").Values("10s", "1m", "5m", "1d"),
+		field.Enum("timeframe").Values("10S", "1", "5", "1D"),
 		field.Bool("enabled").Default(false),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),

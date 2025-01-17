@@ -70,10 +70,10 @@ type Timeframe string
 
 // Timeframe values.
 const (
-	Timeframe10s Timeframe = "10S"
-	Timeframe1m  Timeframe = "1"
-	Timeframe5m  Timeframe = "5"
-	Timeframe1d  Timeframe = "1D"
+	Timeframe10S Timeframe = "10S"
+	Timeframe1   Timeframe = "1"
+	Timeframe5   Timeframe = "5"
+	Timeframe1D  Timeframe = "1D"
 )
 
 func (t Timeframe) String() string {
@@ -83,7 +83,7 @@ func (t Timeframe) String() string {
 // TimeframeValidator is a validator for the "timeframe" field enum values. It is called by the builders before save.
 func TimeframeValidator(t Timeframe) error {
 	switch t {
-	case Timeframe10s, Timeframe1m, Timeframe5m, Timeframe1d:
+	case Timeframe10S, Timeframe1, Timeframe5, Timeframe1D:
 		return nil
 	default:
 		return fmt.Errorf("activesession: invalid enum value for timeframe field: %q", t)

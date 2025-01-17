@@ -40,7 +40,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create enum for timeframes (unchanged)
-CREATE TYPE timeframe AS ENUM ('10s', '1m', '5m', '1d');
+CREATE TYPE timeframe AS ENUM ("10S", "1", "5", "1D");
 
 -- Renamed from trading_sessions to active_sessions
 CREATE TABLE active_sessions (

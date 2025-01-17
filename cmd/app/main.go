@@ -129,7 +129,101 @@ func main() {
 					continue
 				}
 				slog.Debug("received quote data", "data", quoteDataMessage)
+			case tvwsclient.MethodTimescaleUpdate:
+				timescaleUpdateMessage, err := tvwsclient.NewTimescaleUpdateMessage(data.Params)
+				if err != nil {
+					slog.Error("failed to parse timescale update", "error", err)
+					continue
+				}
 
+				// Get session ID from the message
+				sessionID := timescaleUpdateMessage.ChartSessionID
+
+				// Find the active session for this chart session
+				session, err := client.ActiveSession.Query().
+					Where(activesession.SessionID(sessionID)).
+					Only(context.Background())
+				if err != nil {
+					slog.Error("failed to find active session",
+						"error", err,
+						"session_id", sessionID)
+					continue
+				}
+
+				// Process each series update
+				for _, series := range timescaleUpdateMessage.Data.SDS1.S {
+					if len(series.V) < 6 {
+						continue
+					}
+
+					// Extract OHLCV data
+					timestamp := int64(series.V[0])
+					open := series.V[1]
+					high := series.V[2]
+					low := series.V[3]
+					close := series.V[4]
+					volume := series.V[5]
+					slog.Debug("series", "series.V", series.V)
+					slog.Debug("received timescale update",
+						"timestamp", timestamp,
+						"open", open,
+						"high", high,
+						"low", low,
+						"close", close,
+						"volume", volume)
+
+					// First check if a candle with the same key exists
+					exists, err := client.Candle.Query().
+						Where(
+							candle.And(
+								candle.ExchangeEQ(session.Exchange),
+								candle.SymbolEQ(session.Symbol),
+								candle.TimeframeEQ(candle.Timeframe(session.Timeframe)),
+								candle.TimestampEQ(timestamp),
+							),
+						).Exist(context.Background())
+					if err != nil {
+						slog.Error("Error checking existing candle", "error", err)
+						continue
+					}
+
+					if exists {
+						// Update existing candle
+						_, err = client.Candle.Update().
+							Where(
+								candle.And(
+									candle.ExchangeEQ(session.Exchange),
+									candle.SymbolEQ(session.Symbol),
+									candle.TimeframeEQ(candle.Timeframe(session.Timeframe)),
+									candle.TimestampEQ(timestamp),
+								),
+							).
+							SetOpen(open).
+							SetHigh(high).
+							SetLow(low).
+							SetClose(close).
+							SetVolume(volume).
+							Save(context.Background())
+					} else {
+						// Create new candle
+						_, err = client.Candle.Create().
+							SetExchange(session.Exchange).
+							SetSymbol(session.Symbol).
+							SetTimeframe(candle.Timeframe(session.Timeframe)).
+							SetTimestamp(timestamp).
+							SetOpen(open).
+							SetHigh(high).
+							SetLow(low).
+							SetClose(close).
+							SetVolume(volume).
+							Save(context.Background())
+					}
+
+					if err != nil {
+						slog.Error("Error saving candle", "error", err)
+						continue
+					}
+				}
 			case tvwsclient.MethodDataUpdate:
 				duMessage, err := tvwsclient.NewDuMessage(data.Params)
 				if err != nil {
@@ -165,25 +259,56 @@ func main() {
 					close := series.V[4]
 					volume := series.V[5]
 
-					// Create new candle in database
-					_, err := client.Candle.Create().
-						SetExchange(session.Exchange).
-						SetSymbol(session.Symbol).
-						SetTimeframe(candle.Timeframe(session.Timeframe)).
-						SetTimestamp(timestamp).
-						SetOpen(open).
-						SetHigh(high).
-						SetLow(low).
-						SetClose(close).
-						SetVolume(volume).
-						Save(context.Background())
+					// First check if a candle with the same key exists
+					exists, err := client.Candle.Query().
+						Where(
+							candle.And(
+								candle.ExchangeEQ(session.Exchange),
+								candle.SymbolEQ(session.Symbol),
+								candle.TimeframeEQ(candle.Timeframe(session.Timeframe)),
+								candle.TimestampEQ(timestamp),
+							),
+						).Exist(context.Background())
+					if err != nil {
+						slog.Error("Error checking existing candle", "error", err)
+						continue
+					}
+
+					if exists {
+						// Update existing candle
+						_, err = client.Candle.Update().
+							Where(
+								candle.And(
+									candle.ExchangeEQ(session.Exchange),
+									candle.SymbolEQ(session.Symbol),
+									candle.TimeframeEQ(candle.Timeframe(session.Timeframe)),
+									candle.TimestampEQ(timestamp),
+								),
+							).
+							SetOpen(open).
+							SetHigh(high).
+							SetLow(low).
+							SetClose(close).
+							SetVolume(volume).
+							Save(context.Background())
+					} else {
+						// Create new candle
+						_, err = client.Candle.Create().
+							SetExchange(session.Exchange).
+							SetSymbol(session.Symbol).
+							SetTimeframe(candle.Timeframe(session.Timeframe)).
+							SetTimestamp(timestamp).
+							SetOpen(open).
+							SetHigh(high).
+							SetLow(low).
+							SetClose(close).
+							SetVolume(volume).
+							Save(context.Background())
+					}
 
 					if err != nil {
-						slog.Error("failed to save candle",
-							"error", err,
-							"timestamp", timestamp,
-							"exchange", session.Exchange,
-							"symbol", session.Symbol)
+						slog.Error("Error saving candle", "error", err)
+						continue
 					}
 				}
 			}
@@ -246,13 +371,13 @@ func main() {
 		// Convert timeframe to TradingView format
 		var interval string
 		switch activesession.Timeframe(input.Timeframe) {
-		case activesession.Timeframe10s:
+		case activesession.Timeframe10S:
 			interval = "10S"
-		case activesession.Timeframe1m:
+		case activesession.Timeframe1:
 			interval = "1"
-		case activesession.Timeframe5m:
+		case activesession.Timeframe5:
 			interval = "5"
-		case activesession.Timeframe1d:
+		case activesession.Timeframe1D:
 			interval = "1D"
 		default:
 			return c.Status(400).JSON(fiber.Map{"error": "invalid timeframe"})
