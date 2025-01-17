@@ -70,10 +70,10 @@ type Timeframe string
 
 // Timeframe values.
 const (
-	Timeframe10s Timeframe = "10s"
-	Timeframe1m  Timeframe = "1m"
-	Timeframe5m  Timeframe = "5m"
-	Timeframe1d  Timeframe = "1d"
+	Timeframe10s Timeframe = "10S"
+	Timeframe1m  Timeframe = "1"
+	Timeframe5m  Timeframe = "5"
+	Timeframe1d  Timeframe = "1D"
 )
 
 func (t Timeframe) String() string {

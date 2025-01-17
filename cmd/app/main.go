@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/iiiyu/tradingview-ws-client/ent"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
@@ -13,20 +14,48 @@ import (
 )
 
 func main() {
+	// Initialize structured logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	// Initialize Ent client
 	client, err := ent.Open("postgres", "host=192.168.1.48 port=6543 user=postgres dbname=postgres password=uUE1yOke9wIqSAwL7bZBfKJHb5WqDnzmPIc0tlg9rF86hb5m7djpKDHulKmGy3Iy sslmode=disable")
 	if err != nil {
-		log.Fatalf("failed opening connection to postgres: %v", err)
+		slog.Error("failed opening connection to postgres", "error", err)
+		os.Exit(1)
 	}
 	defer client.Close()
 
 	// Run the auto migration tool
 	if err := client.Schema.Create(context.Background()); err != nil {
-		log.Fatalf("failed creating schema resources: %v", err)
+		slog.Error("failed creating schema resources", "error", err)
+		os.Exit(1)
 	}
+
+	// TODO: init tradingview ws client and set read message handler
 
 	app := fiber.New(fiber.Config{
 		AppName: "TradingView Data Service",
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			slog.Error("fiber error",
+				"error", err,
+				"path", c.Path(),
+				"method", c.Method(),
+				"ip", c.IP(),
+			)
+
+			// Default 500 status code
+			code := fiber.StatusInternalServerError
+
+			// Check if it's a fiber.Error
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+
+			return c.Status(code).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		},
 	})
 
 	// Basic routes
@@ -94,7 +123,26 @@ func main() {
 		return c.JSON(sessions)
 	})
 
-	app.Get("/symbols/:session_id/status", func(c *fiber.Ctx) error {
+	app.Get("/symbols/:exchange/:symbol", func(c *fiber.Ctx) error {
+		exchange := c.Params("exchange")
+		symbol := c.Params("symbol")
+
+		sessions, err := client.ActiveSession.Query().
+			Where(
+				activesession.EnabledEQ(true),
+				activesession.ExchangeEQ(exchange),
+				activesession.SymbolEQ(symbol),
+			).
+			All(c.Context())
+
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		return c.JSON(sessions)
+	})
+
+	app.Get("/symbols/session/:session_id/status", func(c *fiber.Ctx) error {
 		sessionID := c.Params("session_id")
 		session, err := client.ActiveSession.Query().
 			Where(activesession.SessionID(sessionID)).
@@ -107,17 +155,14 @@ func main() {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 
-		return c.JSON(fiber.Map{
-			"session_id": session.SessionID,
-			"enabled":    session.Enabled,
-		})
+		return c.JSON(session)
 	})
 
 	// Candlestick data routes
 	app.Get("/candles/:exchange/:symbol", func(c *fiber.Ctx) error {
 		exchange := c.Params("exchange")
 		symbol := c.Params("symbol")
-		timeframe := c.Query("timeframe", "1m")
+		timeframe := c.Query("timeframe", "1")
 		limit := 100 // Default limit
 
 		candles, err := client.Candle.Query().
@@ -137,5 +182,9 @@ func main() {
 		return c.JSON(candles)
 	})
 
-	log.Fatal(app.Listen(":3333"))
+	slog.Info("starting server on port 3333")
+	if err := app.Listen(":3333"); err != nil {
+		slog.Error("server error", "error", err)
+		os.Exit(1)
+	}
 }
