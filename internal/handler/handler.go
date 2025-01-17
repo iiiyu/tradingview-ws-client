@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/iiiyu/tradingview-ws-client/ent"
@@ -34,7 +35,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	app.Get("/symbols/session/:session_id/status", h.handleGetSymbolStatus)
 
 	// Candlestick data routes
-	app.Get("/candles/:exchange/:symbol", h.handleGetCandles)
+	app.Get("/candles/:exchange/:symbol/:timeframe/:limit", h.handleGetCandles)
 }
 
 func (h *Handler) handleHome(c *fiber.Ctx) error {
@@ -163,8 +164,12 @@ func (h *Handler) handleGetSymbolStatus(c *fiber.Ctx) error {
 func (h *Handler) handleGetCandles(c *fiber.Ctx) error {
 	exchange := c.Params("exchange")
 	symbol := c.Params("symbol")
-	timeframe := c.Query("timeframe", "1")
-	limit := 100 // Default limit
+	timeframe := c.Params("timeframe", "1")
+	limitStr := c.Params("limit", "100")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid limit parameter"})
+	}
 
 	candles, err := h.tvService.GetDBClient().Candle.Query().
 		Where(
