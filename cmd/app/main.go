@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/iiiyu/tradingview-ws-client/ent"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 	"github.com/iiiyu/tradingview-ws-client/ent/candle"
+	"github.com/iiiyu/tradingview-ws-client/pkg/tvwsclient"
 
 	"github.com/gofiber/fiber/v2"
 	_ "github.com/lib/pq"
@@ -15,7 +17,7 @@ import (
 
 func main() {
 	// Initialize structured logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	slog.SetDefault(logger)
 
 	// Initialize Ent client
@@ -33,6 +35,160 @@ func main() {
 	}
 
 	// TODO: init tradingview ws client and set read message handler
+	// Initialize TradingView WebSocket client
+	authToken := os.Getenv("TRADINGVIEW_AUTH_TOKEN")
+	if authToken == "" {
+		slog.Error("TRADINGVIEW_AUTH_TOKEN environment variable not set")
+		os.Exit(1)
+	}
+
+	tvClient, err := tvwsclient.NewClient(authToken)
+	if err != nil {
+		slog.Error("failed to create TradingView client", "error", err)
+		os.Exit(1)
+	}
+	defer tvClient.Close()
+
+	// Create data channel for receiving updates
+	dataChan := make(chan tvwsclient.TVResponse)
+
+	// Start receiving data in a goroutine
+	go func() {
+		if err := tvClient.ReadMessage(dataChan); err != nil {
+			slog.Error("failed to read messages", "error", err)
+		}
+	}()
+
+	// // Start processing active sessions
+	// go func() {
+	// 	// Get all active sessions from the database
+	// 	sessions, err := client.ActiveSession.Query().
+	// 		Where(activesession.EnabledEQ(true)).
+	// 		All(context.Background())
+	// 	if err != nil {
+	// 		slog.Error("failed to query active sessions", "error", err)
+	// 		return
+	// 	}
+
+	// 	// Create quote session
+	// 	qsSession := tvwsclient.GenerateSession("qs_")
+	// 	if err := tvwsclient.SendQuoteCreateSessionMessage(tvClient, qsSession); err != nil {
+	// 		slog.Error("failed to create quote session", "error", err)
+	// 		return
+	// 	}
+
+	// 	if err := tvwsclient.SendQuoteSetFieldsMessage(tvClient, qsSession); err != nil {
+	// 		slog.Error("failed to set quote fields", "error", err)
+	// 		return
+	// 	}
+
+	// 	// Subscribe to each active session
+	// 	for _, session := range sessions {
+	// 		symbol := fmt.Sprintf("%s:%s", session.Exchange, session.Symbol)
+	// 		csSession := tvwsclient.GenerateSession("cs_")
+
+	// 		// Convert timeframe enum to TradingView format
+	// 		var interval string
+	// 		switch session.Timeframe {
+	// 		case activesession.Timeframe10s:
+	// 			interval = "10S"
+	// 		case activesession.Timeframe1m:
+	// 			interval = "1"
+	// 		case activesession.Timeframe5m:
+	// 			interval = "5"
+	// 		case activesession.Timeframe1d:
+	// 			interval = "D"
+	// 		default:
+	// 			slog.Error("invalid timeframe", "timeframe", session.Timeframe)
+	// 			continue
+	// 		}
+
+	// 		if err := tvwsclient.SubscriptionChartSessionSymbol(tvClient, csSession, symbol, interval, 10); err != nil {
+	// 			slog.Error("failed to subscribe to chart session",
+	// 				"error", err,
+	// 				"symbol", symbol,
+	// 				"interval", interval)
+	// 			continue
+	// 		}
+
+	// 		slog.Info("subscribed to symbol",
+	// 			"symbol", symbol,
+	// 			"interval", interval,
+	// 			"session_id", session.SessionID)
+	// 	}
+	// }()
+
+	// Process incoming data
+	go func() {
+		for data := range dataChan {
+			switch data.Method {
+			case tvwsclient.MethodQuoteData:
+				quoteDataMessage, err := tvwsclient.NewQuoteDataMessage(data.Params)
+				if err != nil {
+					slog.Error("failed to parse quote data", "error", err)
+					continue
+				}
+				slog.Debug("received quote data", "data", quoteDataMessage)
+
+			case tvwsclient.MethodDataUpdate:
+				duMessage, err := tvwsclient.NewDuMessage(data.Params)
+				if err != nil {
+					slog.Error("failed to parse data update", "error", err)
+					continue
+				}
+
+				// Get session ID from the message
+				sessionID := duMessage.ChartSessionID
+
+				// Find the active session for this chart session
+				session, err := client.ActiveSession.Query().
+					Where(activesession.SessionID(sessionID)).
+					Only(context.Background())
+				if err != nil {
+					slog.Error("failed to find active session",
+						"error", err,
+						"session_id", sessionID)
+					continue
+				}
+
+				// Process each series update
+				for _, series := range duMessage.Data.SDS1.S {
+					if len(series.V) < 6 {
+						continue
+					}
+
+					// Extract OHLCV data
+					timestamp := int64(series.V[0])
+					open := series.V[1]
+					high := series.V[2]
+					low := series.V[3]
+					close := series.V[4]
+					volume := series.V[5]
+
+					// Create new candle in database
+					_, err := client.Candle.Create().
+						SetExchange(session.Exchange).
+						SetSymbol(session.Symbol).
+						SetTimeframe(candle.Timeframe(session.Timeframe)).
+						SetTimestamp(timestamp).
+						SetOpen(open).
+						SetHigh(high).
+						SetLow(low).
+						SetClose(close).
+						SetVolume(volume).
+						Save(context.Background())
+
+					if err != nil {
+						slog.Error("failed to save candle",
+							"error", err,
+							"timestamp", timestamp,
+							"exchange", session.Exchange,
+							"symbol", session.Symbol)
+					}
+				}
+			}
+		}
+	}()
 
 	app := fiber.New(fiber.Config{
 		AppName: "TradingView Data Service",
@@ -83,8 +239,33 @@ func main() {
 			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 		}
 
+		// Create chart session
+		csSession := tvwsclient.GenerateSession("cs_")
+		symbol := fmt.Sprintf("%s:%s", input.Exchange, input.Symbol)
+
+		// Convert timeframe to TradingView format
+		var interval string
+		switch activesession.Timeframe(input.Timeframe) {
+		case activesession.Timeframe10s:
+			interval = "10S"
+		case activesession.Timeframe1m:
+			interval = "1"
+		case activesession.Timeframe5m:
+			interval = "5"
+		case activesession.Timeframe1d:
+			interval = "1D"
+		default:
+			return c.Status(400).JSON(fiber.Map{"error": "invalid timeframe"})
+		}
+
+		// Subscribe to TradingView
+		if err := tvwsclient.SubscriptionChartSessionSymbol(tvClient, csSession, symbol, interval, 10); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "failed to subscribe to TradingView: " + err.Error()})
+		}
+
+		// Save to database
 		session, err := client.ActiveSession.Create().
-			SetSessionID(input.SessionID).
+			SetSessionID(csSession). // Use the generated chart session ID
 			SetExchange(input.Exchange).
 			SetSymbol(input.Symbol).
 			SetTimeframe(activesession.Timeframe(input.Timeframe)).
