@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -150,8 +151,9 @@ func main() {
 	h.RegisterRoutes(app)
 
 	// Start the server
-	slog.Info("starting server on port 3333")
-	if err := app.Listen(":3333"); err != nil {
+	port := cfg.Port
+	slog.Info("starting server on port", "port", port)
+	if err := app.Listen(fmt.Sprintf(":%s", port)); err != nil {
 		slog.Error("failed to start server", "error", err)
 		os.Exit(1)
 	}

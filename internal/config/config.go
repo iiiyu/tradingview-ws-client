@@ -19,10 +19,12 @@ type Config struct {
 	TradingView struct {
 		AuthToken string
 	}
+	Port string
 }
 
 func Load() (*Config, error) {
 	// Initialize flags
+	pflag.String("port", "3333", "Server port")
 	pflag.String("db-host", "", "Database host")
 	pflag.String("db-port", "", "Database port")
 	pflag.String("db-user", "", "Database user")
@@ -40,6 +42,7 @@ func Load() (*Config, error) {
 
 	// Set up environment variable mappings
 	viper.SetEnvPrefix("")
+	viper.BindEnv("port", "PORT")
 	viper.BindEnv("db-host", "DB_HOST")
 	viper.BindEnv("db-port", "DB_PORT")
 	viper.BindEnv("db-user", "DB_USER")
@@ -49,6 +52,9 @@ func Load() (*Config, error) {
 	viper.BindEnv("tradingview-auth-token", "TRADINGVIEW_AUTH_TOKEN")
 
 	cfg := &Config{}
+
+	// Load server configuration
+	cfg.Port = viper.GetString("port")
 
 	// Load database configuration
 	cfg.Database.Host = viper.GetString("db-host")

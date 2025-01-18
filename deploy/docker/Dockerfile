@@ -36,8 +36,9 @@ COPY --from=builder /app/main .
 # Use non root user
 USER appuser
 
+
 # Expose port
-EXPOSE 3333
+EXPOSE ${PORT}
 
 # Command to run
 CMD ["./main"]
