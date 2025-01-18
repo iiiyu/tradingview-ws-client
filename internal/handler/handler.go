@@ -229,9 +229,43 @@ func (h *Handler) handleDeleteSymbol(c *fiber.Ctx) error {
 }
 
 func (h *Handler) handleUnsubscribeAllSymbols(c *fiber.Ctx) error {
-	// unsubscribe all symbols
-	// get all symbols
-	// unsubscribe each symbol
+	// Get all enabled sessions
+	sessions, err := h.tvService.GetDBClient().ActiveSession.Query().
+		Where(activesession.EnabledEQ(true)).
+		All(c.Context())
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch active sessions: " + err.Error()})
+	}
+
+	// Unsubscribe each session based on its type
+	for _, session := range sessions {
+		// Unsubscribe from TradingView based on session type
+		if session.Type == activesession.TypeCandle {
+			err = tvwsclient.SendChartDeleteSessionMessage(h.tvService.GetTVClient(), session.SessionID)
+		} else if session.Type == activesession.TypeQuote {
+			err = tvwsclient.SendQuoteRemoveSymbolsMessage(h.tvService.GetTVClient(), session.SessionID,
+				[]string{fmt.Sprintf("%s:%s", session.Exchange, session.Symbol)})
+		}
+
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to unsubscribe from TradingView: " + err.Error()})
+		}
+
+		// Update session status to disabled
+		_, err = session.Update().
+			SetEnabled(false).
+			Save(c.Context())
+
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to update session status: " + err.Error()})
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Successfully unsubscribed all symbols",
+		"count":   len(sessions),
+	})
 }
 
 func (h *Handler) handleListSymbols(c *fiber.Ctx) error {

@@ -42,6 +42,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Clean up old sessions
+	if err := service.CleanUpOldSessions(client); err != nil {
+		slog.Error("failed to clean up old sessions", "error", err)
+		os.Exit(1)
+	}
+
 	// Initialize TradingView WebSocket client
 	tvClient, err := tvwsclient.NewClient(cfg.TradingView.AuthToken)
 	if err != nil {
