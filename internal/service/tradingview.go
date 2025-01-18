@@ -156,7 +156,7 @@ func (s *TradingViewService) processCandleData(session *ent.ActiveSession, data 
 			candle.And(
 				candle.ExchangeEQ(session.Exchange),
 				candle.SymbolEQ(session.Symbol),
-				candle.TimeframeEQ(candle.Timeframe(session.Timeframe)),
+				candle.TimeframeEQ(candle.Timeframe(string(*session.Timeframe))),
 				candle.TimestampEQ(timestamp),
 			),
 		).Exist(context.Background())
@@ -170,7 +170,7 @@ func (s *TradingViewService) processCandleData(session *ent.ActiveSession, data 
 				candle.And(
 					candle.ExchangeEQ(session.Exchange),
 					candle.SymbolEQ(session.Symbol),
-					candle.TimeframeEQ(candle.Timeframe(session.Timeframe)),
+					candle.TimeframeEQ(candle.Timeframe(string(*session.Timeframe))),
 					candle.TimestampEQ(timestamp),
 				),
 			).
@@ -184,7 +184,7 @@ func (s *TradingViewService) processCandleData(session *ent.ActiveSession, data 
 		_, err = s.client.Candle.Create().
 			SetExchange(session.Exchange).
 			SetSymbol(session.Symbol).
-			SetTimeframe(candle.Timeframe(session.Timeframe)).
+			SetTimeframe(candle.Timeframe(string(*session.Timeframe))).
 			SetTimestamp(timestamp).
 			SetOpen(open).
 			SetHigh(high).

@@ -320,6 +320,16 @@ func TimeframeNotIn(vs ...Timeframe) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldNotIn(FieldTimeframe, vs...))
 }
 
+// TimeframeIsNil applies the IsNil predicate on the "timeframe" field.
+func TimeframeIsNil() predicate.ActiveSession {
+	return predicate.ActiveSession(sql.FieldIsNull(FieldTimeframe))
+}
+
+// TimeframeNotNil applies the NotNil predicate on the "timeframe" field.
+func TimeframeNotNil() predicate.ActiveSession {
+	return predicate.ActiveSession(sql.FieldNotNull(FieldTimeframe))
+}
+
 // EnabledEQ applies the EQ predicate on the "enabled" field.
 func EnabledEQ(v bool) predicate.ActiveSession {
 	return predicate.ActiveSession(sql.FieldEQ(FieldEnabled, v))

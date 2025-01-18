@@ -27,7 +27,7 @@ type ActiveSession struct {
 	// Type holds the value of the "type" field.
 	Type activesession.Type `json:"type,omitempty"`
 	// Timeframe holds the value of the "timeframe" field.
-	Timeframe activesession.Timeframe `json:"timeframe,omitempty"`
+	Timeframe *activesession.Timeframe `json:"timeframe,omitempty"`
 	// Enabled holds the value of the "enabled" field.
 	Enabled bool `json:"enabled,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -99,7 +99,8 @@ func (as *ActiveSession) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field timeframe", values[i])
 			} else if value.Valid {
-				as.Timeframe = activesession.Timeframe(value.String)
+				as.Timeframe = new(activesession.Timeframe)
+				*as.Timeframe = activesession.Timeframe(value.String)
 			}
 		case activesession.FieldEnabled:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -167,8 +168,10 @@ func (as *ActiveSession) String() string {
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", as.Type))
 	builder.WriteString(", ")
-	builder.WriteString("timeframe=")
-	builder.WriteString(fmt.Sprintf("%v", as.Timeframe))
+	if v := as.Timeframe; v != nil {
+		builder.WriteString("timeframe=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("enabled=")
 	builder.WriteString(fmt.Sprintf("%v", as.Enabled))

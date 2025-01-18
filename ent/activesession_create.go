@@ -45,6 +45,14 @@ func (asc *ActiveSessionCreate) SetType(a activesession.Type) *ActiveSessionCrea
 	return asc
 }
 
+// SetNillableType sets the "type" field if the given value is not nil.
+func (asc *ActiveSessionCreate) SetNillableType(a *activesession.Type) *ActiveSessionCreate {
+	if a != nil {
+		asc.SetType(*a)
+	}
+	return asc
+}
+
 // SetTimeframe sets the "timeframe" field.
 func (asc *ActiveSessionCreate) SetTimeframe(a activesession.Timeframe) *ActiveSessionCreate {
 	asc.mutation.SetTimeframe(a)
@@ -150,9 +158,9 @@ func (asc *ActiveSessionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (asc *ActiveSessionCreate) defaults() {
-	if _, ok := asc.mutation.Timeframe(); !ok {
-		v := activesession.DefaultTimeframe
-		asc.mutation.SetTimeframe(v)
+	if _, ok := asc.mutation.GetType(); !ok {
+		v := activesession.DefaultType
+		asc.mutation.SetType(v)
 	}
 	if _, ok := asc.mutation.Enabled(); !ok {
 		v := activesession.DefaultEnabled
@@ -190,9 +198,6 @@ func (asc *ActiveSessionCreate) check() error {
 		if err := activesession.TypeValidator(v); err != nil {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "ActiveSession.type": %w`, err)}
 		}
-	}
-	if _, ok := asc.mutation.Timeframe(); !ok {
-		return &ValidationError{Name: "timeframe", err: errors.New(`ent: missing required field "ActiveSession.timeframe"`)}
 	}
 	if v, ok := asc.mutation.Timeframe(); ok {
 		if err := activesession.TimeframeValidator(v); err != nil {
@@ -261,7 +266,7 @@ func (asc *ActiveSessionCreate) createSpec() (*ActiveSession, *sqlgraph.CreateSp
 	}
 	if value, ok := asc.mutation.Timeframe(); ok {
 		_spec.SetField(activesession.FieldTimeframe, field.TypeEnum, value)
-		_node.Timeframe = value
+		_node.Timeframe = &value
 	}
 	if value, ok := asc.mutation.Enabled(); ok {
 		_spec.SetField(activesession.FieldEnabled, field.TypeBool, value)

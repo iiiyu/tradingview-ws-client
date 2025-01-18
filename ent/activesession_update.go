@@ -98,6 +98,12 @@ func (asu *ActiveSessionUpdate) SetNillableTimeframe(a *activesession.Timeframe)
 	return asu
 }
 
+// ClearTimeframe clears the value of the "timeframe" field.
+func (asu *ActiveSessionUpdate) ClearTimeframe() *ActiveSessionUpdate {
+	asu.mutation.ClearTimeframe()
+	return asu
+}
+
 // SetEnabled sets the "enabled" field.
 func (asu *ActiveSessionUpdate) SetEnabled(b bool) *ActiveSessionUpdate {
 	asu.mutation.SetEnabled(b)
@@ -215,6 +221,9 @@ func (asu *ActiveSessionUpdate) sqlSave(ctx context.Context) (n int, err error) 
 	if value, ok := asu.mutation.Timeframe(); ok {
 		_spec.SetField(activesession.FieldTimeframe, field.TypeEnum, value)
 	}
+	if asu.mutation.TimeframeCleared() {
+		_spec.ClearField(activesession.FieldTimeframe, field.TypeEnum)
+	}
 	if value, ok := asu.mutation.Enabled(); ok {
 		_spec.SetField(activesession.FieldEnabled, field.TypeBool, value)
 	}
@@ -311,6 +320,12 @@ func (asuo *ActiveSessionUpdateOne) SetNillableTimeframe(a *activesession.Timefr
 	if a != nil {
 		asuo.SetTimeframe(*a)
 	}
+	return asuo
+}
+
+// ClearTimeframe clears the value of the "timeframe" field.
+func (asuo *ActiveSessionUpdateOne) ClearTimeframe() *ActiveSessionUpdateOne {
+	asuo.mutation.ClearTimeframe()
 	return asuo
 }
 
@@ -460,6 +475,9 @@ func (asuo *ActiveSessionUpdateOne) sqlSave(ctx context.Context) (_node *ActiveS
 	}
 	if value, ok := asuo.mutation.Timeframe(); ok {
 		_spec.SetField(activesession.FieldTimeframe, field.TypeEnum, value)
+	}
+	if asuo.mutation.TimeframeCleared() {
+		_spec.ClearField(activesession.FieldTimeframe, field.TypeEnum)
 	}
 	if value, ok := asuo.mutation.Enabled(); ok {
 		_spec.SetField(activesession.FieldEnabled, field.TypeBool, value)

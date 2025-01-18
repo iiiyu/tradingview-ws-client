@@ -315,7 +315,7 @@ func (m *ActiveSessionMutation) Timeframe() (r activesession.Timeframe, exists b
 // OldTimeframe returns the old "timeframe" field's value of the ActiveSession entity.
 // If the ActiveSession object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ActiveSessionMutation) OldTimeframe(ctx context.Context) (v activesession.Timeframe, err error) {
+func (m *ActiveSessionMutation) OldTimeframe(ctx context.Context) (v *activesession.Timeframe, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldTimeframe is only allowed on UpdateOne operations")
 	}
@@ -329,9 +329,22 @@ func (m *ActiveSessionMutation) OldTimeframe(ctx context.Context) (v activesessi
 	return oldValue.Timeframe, nil
 }
 
+// ClearTimeframe clears the value of the "timeframe" field.
+func (m *ActiveSessionMutation) ClearTimeframe() {
+	m.timeframe = nil
+	m.clearedFields[activesession.FieldTimeframe] = struct{}{}
+}
+
+// TimeframeCleared returns if the "timeframe" field was cleared in this mutation.
+func (m *ActiveSessionMutation) TimeframeCleared() bool {
+	_, ok := m.clearedFields[activesession.FieldTimeframe]
+	return ok
+}
+
 // ResetTimeframe resets all changes to the "timeframe" field.
 func (m *ActiveSessionMutation) ResetTimeframe() {
 	m.timeframe = nil
+	delete(m.clearedFields, activesession.FieldTimeframe)
 }
 
 // SetEnabled sets the "enabled" field.
@@ -644,7 +657,11 @@ func (m *ActiveSessionMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ActiveSessionMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(activesession.FieldTimeframe) {
+		fields = append(fields, activesession.FieldTimeframe)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -657,6 +674,11 @@ func (m *ActiveSessionMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ActiveSessionMutation) ClearField(name string) error {
+	switch name {
+	case activesession.FieldTimeframe:
+		m.ClearTimeframe()
+		return nil
+	}
 	return fmt.Errorf("unknown ActiveSession nullable field %s", name)
 }
 

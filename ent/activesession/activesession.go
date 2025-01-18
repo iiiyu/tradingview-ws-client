@@ -74,6 +74,9 @@ var (
 // Type defines the type for the "type" enum field.
 type Type string
 
+// TypeCandle is the default value of the Type enum.
+const DefaultType = TypeCandle
+
 // Type values.
 const (
 	TypeCandle Type = "candle"
@@ -96,9 +99,6 @@ func TypeValidator(_type Type) error {
 
 // Timeframe defines the type for the "timeframe" enum field.
 type Timeframe string
-
-// Timeframe10S is the default value of the Timeframe enum.
-const DefaultTimeframe = Timeframe10S
 
 // Timeframe values.
 const (
