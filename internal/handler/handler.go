@@ -8,12 +8,20 @@ import (
 	"github.com/iiiyu/tradingview-ws-client/ent"
 	"github.com/iiiyu/tradingview-ws-client/ent/activesession"
 	"github.com/iiiyu/tradingview-ws-client/ent/candle"
+	"github.com/iiiyu/tradingview-ws-client/ent/predicate"
 	"github.com/iiiyu/tradingview-ws-client/internal/service"
 	"github.com/iiiyu/tradingview-ws-client/pkg/tvwsclient"
 )
 
 type Handler struct {
 	tvService *service.TradingViewService
+}
+
+type SymbolRequest struct {
+	Exchange  string `json:"exchange"`
+	Symbol    string `json:"symbol"`
+	Timeframe string `json:"timeframe"`
+	Type      string `json:"type"`
 }
 
 func NewHandler(tvService *service.TradingViewService) *Handler {
@@ -28,10 +36,17 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	app.Get("/health", h.handleHealth)
 
 	// Symbol management routes
+	// add symbol
 	app.Post("/symbols", h.handleCreateSymbol)
-	app.Delete("/symbols/:session_id", h.handleDeleteSymbol)
+	// delete symbol
+	app.Delete("/symbols", h.handleDeleteSymbol)
+	// unsubscribe all symbols
+	app.Delete("/symbols/unsubscribe", h.handleUnsubscribeAllSymbols)
+	// list symbols
 	app.Get("/symbols", h.handleListSymbols)
+	// get symbol by exchange
 	app.Get("/symbols/:exchange/:symbol", h.handleGetSymbolByExchange)
+	// get symbol status
 	app.Get("/symbols/session/:session_id/status", h.handleGetSymbolStatus)
 
 	// Candlestick data routes
@@ -53,15 +68,38 @@ func (h *Handler) handleHealth(c *fiber.Ctx) error {
 }
 
 func (h *Handler) handleCreateSymbol(c *fiber.Ctx) error {
-	var input struct {
-		Exchange  string `json:"exchange"`
-		Symbol    string `json:"symbol"`
-		Timeframe string `json:"timeframe"`
-		Type      string `json:"type"`
-	}
-
+	input := SymbolRequest{}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// check if session exists
+	// Build query conditions
+	conditions := []predicate.ActiveSession{
+		activesession.ExchangeEQ(input.Exchange),
+		activesession.SymbolEQ(input.Symbol),
+		activesession.TypeEQ(activesession.Type(input.Type)),
+		activesession.EnabledEQ(true),
+	}
+
+	// Add timeframe condition for candle type
+	if activesession.Type(input.Type) == activesession.TypeCandle {
+		conditions = append(conditions, activesession.TimeframeEQ(activesession.Timeframe(input.Timeframe)))
+	}
+
+	// Find active session
+	session, err := h.tvService.GetDBClient().ActiveSession.Query().
+		Where(conditions...).
+		Only(c.Context())
+
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+	}
+
+	if session != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Session already exists"})
 	}
 
 	switch activesession.Type(input.Type) {
@@ -133,16 +171,67 @@ func (h *Handler) handleCreateSymbol(c *fiber.Ctx) error {
 }
 
 func (h *Handler) handleDeleteSymbol(c *fiber.Ctx) error {
-	sessionID := c.Params("session_id")
-	_, err := h.tvService.GetDBClient().ActiveSession.Delete().
-		Where(activesession.SessionID(sessionID)).
-		Exec(c.Context())
+	input := SymbolRequest{}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	// 1. check if session exists
+	// use type ,exchange,symbol and if type = candle add timeframe to check if session exists
+
+	// Build query conditions
+	conditions := []predicate.ActiveSession{
+		activesession.ExchangeEQ(input.Exchange),
+		activesession.SymbolEQ(input.Symbol),
+		activesession.TypeEQ(activesession.Type(input.Type)),
+		activesession.EnabledEQ(true),
+	}
+
+	// Add timeframe condition for candle type
+	if activesession.Type(input.Type) == activesession.TypeCandle {
+		conditions = append(conditions, activesession.TimeframeEQ(activesession.Timeframe(input.Timeframe)))
+	}
+
+	// Find active session
+	session, err := h.tvService.GetDBClient().ActiveSession.Query().
+		Where(conditions...).
+		Only(c.Context())
 
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return c.Status(404).JSON(fiber.Map{"error": "Session not found"})
+		}
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.SendStatus(204)
+	// 2. use sessionID to unsubscribe from TradingView
+	// Unsubscribe from TradingView based on session type
+	if session.Type == activesession.TypeCandle {
+		err = tvwsclient.SendChartDeleteSessionMessage(h.tvService.GetTVClient(), session.SessionID)
+	} else if session.Type == activesession.TypeQuote {
+		err = tvwsclient.SendQuoteRemoveSymbolsMessage(h.tvService.GetTVClient(), session.SessionID, []string{fmt.Sprintf("%s:%s", session.Exchange, session.Symbol)})
+	}
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to unsubscribe from TradingView: " + err.Error()})
+	}
+
+	// 3. update session enabled to false
+	// Update session status
+	session, err = session.Update().
+		SetEnabled(false).
+		Save(c.Context())
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to update session status: " + err.Error()})
+	}
+
+	return c.JSON(session)
+}
+
+func (h *Handler) handleUnsubscribeAllSymbols(c *fiber.Ctx) error {
+	// unsubscribe all symbols
+	// get all symbols
+	// unsubscribe each symbol
 }
 
 func (h *Handler) handleListSymbols(c *fiber.Ctx) error {
