@@ -124,7 +124,7 @@ func (h *Handler) handleCreateSymbol(c *fiber.Ctx) error {
 		}
 
 		// Subscribe to TradingView
-		if err := tvwsclient.SubscriptionChartSessionSymbol(h.tvService.GetTVClient(), csSession, symbol, interval, 10); err != nil {
+		if err := tvwsclient.SubscriptionChartSessionSymbol(h.tvService.GetTVClient(), csSession, symbol, interval, 300); err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "failed to subscribe to TradingView: " + err.Error()})
 		}
 
