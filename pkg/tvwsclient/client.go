@@ -129,7 +129,7 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 		parts := strings.Split(string(message), "~m~")
 		for _, part := range parts {
 			if strings.HasPrefix(part, "{") {
-				slog.Debug("received", "message", part)
+				// slog.Debug("received", "message", part)
 				var response TVResponse
 				if err := json.Unmarshal([]byte(part), &response); err != nil {
 					continue
