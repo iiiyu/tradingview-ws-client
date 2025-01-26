@@ -34,6 +34,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	// Basic routes
 	app.Get("/", h.handleHome)
 	app.Get("/health", h.handleHealth)
+	app.Get("/reconnect", h.handleReconnect)
 
 	// Symbol management routes
 	// add symbol
@@ -64,6 +65,13 @@ func (h *Handler) handleHome(c *fiber.Ctx) error {
 }
 
 func (h *Handler) handleHealth(c *fiber.Ctx) error {
+	return c.SendStatus(200)
+}
+
+func (h *Handler) handleReconnect(c *fiber.Ctx) error {
+	if err := h.tvService.ReconnectTVClient(); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
 	return c.SendStatus(200)
 }
 

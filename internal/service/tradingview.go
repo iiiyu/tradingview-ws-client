@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/iiiyu/tradingview-ws-client/ent"
@@ -26,11 +27,27 @@ type CachedQuoteData struct {
 }
 
 func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, cache *ristretto.Cache) *TradingViewService {
-	return &TradingViewService{
+	service := &TradingViewService{
 		client:   dbClient,
 		tvClient: tvClient,
 		cache:    cache,
 	}
+
+	// Start periodic reconnection in a separate goroutine
+	go func() {
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if err := service.ReconnectTVClient(); err != nil {
+				slog.Error("failed to reconnect TradingView client", "error", err)
+			} else {
+				slog.Info("successfully reconnected TradingView client")
+			}
+		}
+	}()
+
+	return service
 }
 
 // GetDBClient returns the database client
@@ -41,6 +58,108 @@ func (s *TradingViewService) GetDBClient() *ent.Client {
 // GetTVClient returns the TradingView client
 func (s *TradingViewService) GetTVClient() *tvwsclient.Client {
 	return s.tvClient
+}
+
+func (s *TradingViewService) Unsubscribe(sessions []*ent.ActiveSession) error {
+
+	var err error
+	// Unsubscribe each session based on its type
+	for _, session := range sessions {
+		// Unsubscribe from TradingView based on session type
+		if session.Type == activesession.TypeCandle {
+			err = tvwsclient.SendChartDeleteSessionMessage(s.GetTVClient(), session.SessionID)
+		} else if session.Type == activesession.TypeQuote {
+			err = tvwsclient.SendQuoteRemoveSymbolsMessage(s.GetTVClient(), session.SessionID,
+				[]string{fmt.Sprintf("%s:%s", session.Exchange, session.Symbol)})
+		}
+
+		if err != nil {
+			// ignore error if it fails
+			slog.Error("failed to unsubscribe from TradingView", "error", err)
+		}
+
+		// Update session status to disabled
+		_, err = session.Update().
+			SetEnabled(false).
+			Save(context.Background())
+
+		if err != nil {
+			// ignore error if it fails
+			slog.Error("failed to update session status", "error", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *TradingViewService) Subscribe(sessions []*ent.ActiveSession) error {
+
+	for _, session := range sessions {
+		symbol := fmt.Sprintf("%s:%s", session.Exchange, session.Symbol)
+		var sessionID string
+
+		switch session.Type {
+		case activesession.TypeCandle:
+			sessionID = tvwsclient.GenerateSession("cs_")
+
+			// Subscribe to TradingView
+			if err := tvwsclient.SubscriptionChartSessionSymbol(s.tvClient, sessionID, symbol, session.Timeframe.String(), 300); err != nil {
+				return fmt.Errorf("failed to subscribe to TradingView for session %s: %w", session.SessionID, err)
+			}
+
+		case activesession.TypeQuote:
+			sessionID = tvwsclient.GenerateSession("qs_")
+			if err := tvwsclient.SubscriptionQuoteSessionSymbol(s.tvClient, sessionID, symbol); err != nil {
+				return fmt.Errorf("failed to subscribe to TradingView for session %s: %w", session.SessionID, err)
+			}
+
+		default:
+			return fmt.Errorf("invalid session type for session: %s", session.SessionID)
+		}
+
+		// Update session to enabled
+		_, err := session.Update().
+			SetEnabled(true).
+			SetSessionID(sessionID).
+			Save(context.Background())
+
+		if err != nil {
+			return fmt.Errorf("failed to update session %s status: %w", session.SessionID, err)
+		}
+	}
+	return nil
+}
+
+// ReconnectTVClient reconnects the TradingView client
+func (s *TradingViewService) ReconnectTVClient() error {
+	ctx := context.Background()
+
+	// 1. fetch all active sessions and keep the symbol name
+	activeSessions, err := s.client.ActiveSession.Query().
+		Where(activesession.EnabledEQ(true)).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch active sessions: %w", err)
+	}
+
+	// 2. try to unsubscribe from all symbols, ignore error if it fails
+	err = s.Unsubscribe(activeSessions)
+	if err != nil {
+		return fmt.Errorf("failed to unsubscribe from TradingView: %w", err)
+	}
+
+	// 3. reconnect to TradingView
+	if err := s.tvClient.Reconnect(); err != nil {
+		return fmt.Errorf("failed to reconnect: %w", err)
+	}
+
+	// 4. subscribe to all symbols and reactivate sessions
+	err = s.Subscribe(activeSessions)
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to TradingView: %w", err)
+	}
+
+	return nil
 }
 
 func (s *TradingViewService) ProcessTimescaleUpdate(msg *tvwsclient.TimescaleUpdateMessage) error {

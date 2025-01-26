@@ -68,6 +68,10 @@ func (c *Client) reconnect() error {
 	return nil
 }
 
+func (c *Client) Reconnect() error {
+	return c.reconnect()
+}
+
 func (c *Client) SendInitMessage() error {
 	if err := SendSetAuthTokenMessage(c, c.authToken); err != nil {
 		return err
