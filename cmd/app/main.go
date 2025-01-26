@@ -29,22 +29,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize Ent client
-	client, err := ent.Open("postgres", cfg.GetDSN())
+	// Initialize Ent entClient
+	entClient, err := ent.Open("postgres", cfg.GetDSN())
 	if err != nil {
 		slog.Error("failed opening connection to postgres", "error", err)
 		os.Exit(1)
 	}
-	defer client.Close()
+	defer entClient.Close()
 
 	// Run the auto migration tool
-	if err := client.Schema.Create(context.Background()); err != nil {
+	if err := entClient.Schema.Create(context.Background()); err != nil {
 		slog.Error("failed creating schema resources", "error", err)
 		os.Exit(1)
 	}
 
 	// Clean up old sessions
-	if err := service.CleanUpOldSessions(client); err != nil {
+	if err := service.CleanUpOldSessions(entClient); err != nil {
 		slog.Error("failed to clean up old sessions", "error", err)
 		os.Exit(1)
 	}
@@ -68,7 +68,7 @@ func main() {
 	}
 
 	// Initialize service
-	tvService := service.NewTradingViewService(client, tvClient, cache)
+	tvService := service.NewTradingViewService(entClient, tvClient, cache)
 
 	// Create data channel for receiving updates
 	dataChan := make(chan tvwsclient.TVResponse)
