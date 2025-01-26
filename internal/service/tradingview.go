@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -14,9 +15,11 @@ import (
 )
 
 type TradingViewService struct {
-	client   *ent.Client
-	tvClient *tvwsclient.Client
-	cache    *ristretto.Cache
+	client     *ent.Client
+	tvClient   *tvwsclient.Client
+	cache      *ristretto.Cache
+	mu         sync.Mutex
+	cancelFunc context.CancelFunc
 }
 type CachedQuoteData struct {
 	Name      string  `json:"name"`
@@ -33,6 +36,8 @@ func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, ca
 		cache:    cache,
 	}
 
+	service.readTradingViewMessage()
+
 	// Start periodic reconnection in a separate goroutine
 	go func() {
 		ticker := time.NewTicker(15 * time.Minute)
@@ -48,6 +53,79 @@ func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, ca
 	}()
 
 	return service
+}
+
+func (s *TradingViewService) readTradingViewMessage() {
+	s.mu.Lock()
+	// Cancel previous goroutines if they exist
+	if s.cancelFunc != nil {
+		s.cancelFunc()
+	}
+
+	// Create new context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancelFunc = cancel
+	s.mu.Unlock()
+
+	// Create data channel for receiving updates
+	dataChan := make(chan tvwsclient.TVResponse)
+
+	// Start receiving data in a goroutine
+	go func() {
+		defer close(dataChan)
+		if err := s.tvClient.ReadMessage(dataChan); err != nil {
+			slog.Error("failed to read messages", "error", err)
+		}
+	}()
+
+	// Process incoming data
+	go func() {
+		defer slog.Info("message processing goroutine stopped")
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case data, ok := <-dataChan:
+				if !ok {
+					return
+				}
+				switch data.Method {
+				case tvwsclient.MethodQuoteData:
+					quoteDataMessage, err := tvwsclient.NewQuoteDataMessage(data.Params)
+					if err != nil {
+						slog.Error("failed to parse quote data", "error", err)
+						continue
+					}
+
+					if err := s.ProcessQuoteData(quoteDataMessage); err != nil {
+						slog.Error("failed to process quote data", "error", err)
+					}
+
+				case tvwsclient.MethodTimescaleUpdate:
+					timescaleUpdateMessage, err := tvwsclient.NewTimescaleUpdateMessage(data.Params)
+					if err != nil {
+						slog.Error("failed to parse timescale update", "error", err)
+						continue
+					}
+
+					if err := s.ProcessTimescaleUpdate(timescaleUpdateMessage); err != nil {
+						slog.Error("failed to process timescale update", "error", err)
+					}
+
+				case tvwsclient.MethodDataUpdate:
+					duMessage, err := tvwsclient.NewDuMessage(data.Params)
+					if err != nil {
+						slog.Error("failed to parse data update", "error", err)
+						continue
+					}
+
+					if err := s.ProcessDataUpdate(duMessage); err != nil {
+						slog.Error("failed to process data update", "error", err)
+					}
+				}
+			}
+		}
+	}()
 }
 
 // GetDBClient returns the database client
@@ -152,6 +230,8 @@ func (s *TradingViewService) ReconnectTVClient() error {
 	if err := s.tvClient.Reconnect(); err != nil {
 		return fmt.Errorf("failed to reconnect: %w", err)
 	}
+
+	s.readTradingViewMessage()
 
 	// 4. subscribe to all symbols and reactivate sessions
 	err = s.Subscribe(activeSessions)
