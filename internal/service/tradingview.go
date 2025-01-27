@@ -40,7 +40,7 @@ func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, ca
 
 	// Start periodic reconnection in a separate goroutine
 	go func() {
-		ticker := time.NewTicker(15 * time.Minute)
+		ticker := time.NewTicker(3 * time.Minute)
 		defer ticker.Stop()
 
 		for range ticker.C {
