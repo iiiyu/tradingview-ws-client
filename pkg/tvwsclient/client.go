@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -14,11 +16,18 @@ import (
 // Client represents a TradingView WebSocket client
 type Client struct {
 	ws            *websocket.Conn
+	mu            sync.Mutex // protects ws
 	requestHeader http.Header
 	wsURL         string
 	validateURL   string
 	authToken     string
 	maxRetries    int
+	done          chan struct{} // Channel to signal connection close
+	reconnecting  bool          // Flag to indicate reconnection in progress
+	pingInterval  time.Duration // Interval for sending ping messages
+	writeTimeout  time.Duration // Timeout for write operations
+	readTimeout   time.Duration // Timeout for read operations
+	isConnected   bool
 }
 
 var heartbeatRegex = regexp.MustCompile(`~h~\d+`)
@@ -31,6 +40,10 @@ func NewClient(authToken string, options ...Option) (*Client, error) {
 		validateURL:   "https://scanner.tradingview.com/symbol?symbol=%s%%3A%s&fields=market&no_404=false",
 		authToken:     authToken,
 		maxRetries:    5,
+		done:          make(chan struct{}),
+		pingInterval:  30 * time.Second,
+		writeTimeout:  60 * time.Second,
+		readTimeout:   60 * time.Second,
 	}
 
 	// Apply options
@@ -42,30 +55,101 @@ func NewClient(authToken string, options ...Option) (*Client, error) {
 		return nil, err
 	}
 
+	// Start ping handler
+	go client.pingHandler()
+
 	return client, nil
 }
 
 // connect establishes a WebSocket connection
 func (c *Client) connect() error {
-	conn, _, err := websocket.DefaultDialer.Dial(c.wsURL, c.requestHeader)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.ws != nil {
+		c.ws.Close()
+		c.ws = nil
+	}
+
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 10 * time.Second,
+	}
+
+	conn, _, err := dialer.Dial(c.wsURL, c.requestHeader)
 	if err != nil {
+		c.isConnected = false
 		return fmt.Errorf("failed to connect to WebSocket: %w", err)
 	}
+
 	c.ws = conn
+	c.isConnected = true
+
+	// Setup ping handler to respond to server pings
+	c.ws.SetPingHandler(func(appData string) error {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if !c.isConnected || c.ws == nil {
+			return fmt.Errorf("connection is closed")
+		}
+		return c.ws.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(10*time.Second))
+	})
+
 	return c.SendInitMessage()
+}
+
+// pingHandler sends periodic ping messages to keep the connection alive
+func (c *Client) pingHandler() {
+	ticker := time.NewTicker(c.pingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.mu.Lock()
+			if !c.isConnected || c.ws == nil {
+				c.mu.Unlock()
+				continue
+			}
+			err := c.ws.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(c.writeTimeout))
+			c.mu.Unlock()
+
+			if err != nil {
+				slog.Error("ping error", "error", err)
+				if err := c.reconnect(); err != nil {
+					slog.Error("failed to reconnect after ping error", "error", err)
+				}
+			}
+		case <-c.done:
+			return
+		}
+	}
 }
 
 // reconnect attempts to reconnect to the WebSocket server
 func (c *Client) reconnect() error {
+	c.mu.Lock()
+	if c.reconnecting {
+		c.mu.Unlock()
+		return nil // Already reconnecting
+	}
+	c.reconnecting = true
+	c.isConnected = false
 	if c.ws != nil {
 		c.ws.Close()
+		c.ws = nil
 	}
+	c.mu.Unlock()
 
-	if err := c.connect(); err != nil {
-		return err
-	}
+	// Add small delay before reconnecting
+	time.Sleep(time.Second)
 
-	return nil
+	err := c.connect()
+
+	c.mu.Lock()
+	c.reconnecting = false
+	c.mu.Unlock()
+
+	return err
 }
 
 func (c *Client) Reconnect() error {
@@ -87,7 +171,31 @@ func (c *Client) SendInitMessage() error {
 func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 	retries := 0
 	for {
-		_, message, err := c.ws.ReadMessage()
+		c.mu.Lock()
+		if !c.isConnected || c.ws == nil {
+			c.mu.Unlock()
+			if retries < c.maxRetries {
+				retries++
+				slog.Info("connection lost, attempting reconnect",
+					"attempt", retries,
+					"max_retries", c.maxRetries)
+
+				if err := c.reconnect(); err != nil {
+					slog.Error("reconnection attempt failed",
+						"attempt", retries,
+						"error", err)
+					time.Sleep(time.Duration(retries) * time.Second)
+					continue
+				}
+			} else {
+				return fmt.Errorf("connection is closed and max retries exceeded")
+			}
+			continue
+		}
+		ws := c.ws // Store local copy of ws
+		c.mu.Unlock()
+
+		_, message, err := ws.ReadMessage()
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				return nil
@@ -105,6 +213,7 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 					slog.Error("reconnection attempt failed",
 						"attempt", retries,
 						"error", err)
+					time.Sleep(time.Duration(retries) * time.Second)
 					continue
 				}
 
@@ -121,10 +230,20 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 
 		// Handle heartbeat messages
 		if heartbeatRegex.Match(message) {
-			if err := c.ws.WriteMessage(websocket.TextMessage, message); err != nil {
-				slog.Error("error sending heartbeat response",
-					"error", err)
-				continue // Don't return on heartbeat errors, try to reconnect
+			c.mu.Lock()
+			if !c.isConnected || c.ws == nil {
+				c.mu.Unlock()
+				continue
+			}
+			err := c.ws.WriteMessage(websocket.TextMessage, message)
+			c.mu.Unlock()
+
+			if err != nil {
+				slog.Error("error sending heartbeat response", "error", err)
+				if err := c.reconnect(); err != nil {
+					slog.Error("reconnection failed after heartbeat error", "error", err)
+				}
+				continue
 			}
 			continue
 		}
@@ -133,21 +252,38 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 		parts := strings.Split(string(message), "~m~")
 		for _, part := range parts {
 			if strings.HasPrefix(part, "{") {
-				// slog.Debug("received", "message", part)
 				var response TVResponse
 				if err := json.Unmarshal([]byte(part), &response); err != nil {
+					slog.Error("failed to unmarshal message", "error", err)
 					continue
 				}
-				dataChan <- response
+				select {
+				case dataChan <- response:
+				case <-c.done:
+					return nil
+				}
 			}
 		}
 	}
 }
 
-// Close closes the WebSocket connection
+// Close closes the WebSocket connection and stops the ping handler
 func (c *Client) Close() error {
+	select {
+	case <-c.done:
+		return nil
+	default:
+		close(c.done)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.isConnected = false
 	if c.ws != nil {
-		return c.ws.Close()
+		err := c.ws.Close()
+		c.ws = nil
+		return err
 	}
 	return nil
 }
