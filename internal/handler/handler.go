@@ -347,6 +347,11 @@ func (h *Handler) handleGetCandles(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Reverse the slice to get ascending order
+	for i, j := 0, len(candles)-1; i < j; i, j = i+1, j-1 {
+		candles[i], candles[j] = candles[j], candles[i]
+	}
+
 	return c.JSON(candles)
 }
 
