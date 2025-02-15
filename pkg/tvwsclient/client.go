@@ -19,7 +19,6 @@ type Client struct {
 	mu            sync.Mutex // protects ws
 	requestHeader http.Header
 	wsURL         string
-	authToken     string
 	maxRetries    int
 	done          chan struct{} // Channel to signal connection close
 	reconnecting  bool          // Flag to indicate reconnection in progress
@@ -32,11 +31,10 @@ type Client struct {
 var heartbeatRegex = regexp.MustCompile(`~h~\d+`)
 
 // NewClient creates a new TradingView WebSocket client
-func NewClient(authToken string, options ...Option) (*Client, error) {
+func NewClient(options ...Option) (*Client, error) {
 	client := &Client{
 		requestHeader: defaultHeaders(),
 		wsURL:         "wss://prodata.tradingview.com/socket.io/websocket?from=screener%2F",
-		authToken:     authToken,
 		maxRetries:    5,
 		done:          make(chan struct{}),
 		pingInterval:  30 * time.Second,
@@ -155,7 +153,10 @@ func (c *Client) Reconnect() error {
 }
 
 func (c *Client) SendInitMessage() error {
-	if err := SendSetAuthTokenMessage(c, c.authToken); err != nil {
+	// Should be initialized AuthTokenManager first
+	authToken := GetAuthTokenManager().GetToken()
+
+	if err := SendSetAuthTokenMessage(c, authToken); err != nil {
 		return err
 	}
 

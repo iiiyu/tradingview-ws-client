@@ -37,7 +37,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	// Create a new client
-	client, err := tvwsclient.NewClient(authToken)
+	client, err := tvwsclient.NewClient()
 	if err != nil {
 		slog.Error("failed to create client", "error", err)
 		os.Exit(1)

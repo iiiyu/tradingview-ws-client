@@ -17,7 +17,9 @@ type Config struct {
 		SSLMode  string
 	}
 	TradingView struct {
-		AuthToken string
+		DeviceToken string
+		SessionID   string
+		SessionSign string
 	}
 	Port string
 }
@@ -49,7 +51,9 @@ func Load() (*Config, error) {
 	viper.BindEnv("db-password", "DB_PASSWORD")
 	viper.BindEnv("db-name", "DB_NAME")
 	viper.BindEnv("db-sslmode", "DB_SSLMODE")
-	viper.BindEnv("tradingview-auth-token", "TRADINGVIEW_AUTH_TOKEN")
+	viper.BindEnv("tradingview-device-token", "TRADINGVIEW_DEVICE_TOKEN")
+	viper.BindEnv("tradingview-session-id", "TRADINGVIEW_SESSION_ID")
+	viper.BindEnv("tradingview-session-sign", "TRADINGVIEW_SESSION_SIGN")
 
 	cfg := &Config{}
 
@@ -65,9 +69,20 @@ func Load() (*Config, error) {
 	cfg.Database.SSLMode = viper.GetString("db-sslmode")
 
 	// Load TradingView configuration
-	cfg.TradingView.AuthToken = viper.GetString("tradingview-auth-token")
-	if cfg.TradingView.AuthToken == "" {
-		return nil, fmt.Errorf("TRADINGVIEW_AUTH_TOKEN environment variable not set")
+	cfg.TradingView.DeviceToken = viper.GetString("tradingview-device-token")
+	cfg.TradingView.SessionID = viper.GetString("tradingview-session-id")
+	cfg.TradingView.SessionSign = viper.GetString("tradingview-session-sign")
+
+	if cfg.TradingView.DeviceToken == "" {
+		return nil, fmt.Errorf("TRADINGVIEW_DEVICE_TOKEN environment variable not set")
+	}
+
+	if cfg.TradingView.SessionID == "" {
+		return nil, fmt.Errorf("TRADINGVIEW_SESSION_ID environment variable not set")
+	}
+
+	if cfg.TradingView.SessionSign == "" {
+		return nil, fmt.Errorf("TRADINGVIEW_SESSION_SIGN environment variable not set")
 	}
 
 	return cfg, nil
@@ -82,4 +97,8 @@ func (c *Config) GetDSN() string {
 		c.Database.Password,
 		c.Database.SSLMode,
 	)
+}
+
+func (c *Config) GetTradingViewConfig() (string, string, string) {
+	return c.TradingView.DeviceToken, c.TradingView.SessionID, c.TradingView.SessionSign
 }

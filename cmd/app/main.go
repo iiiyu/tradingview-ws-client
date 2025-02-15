@@ -49,8 +49,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize AuthTokenManager
+	deviceToken, sessionID, sessionSign := cfg.GetTradingViewConfig()
+	tvwsclient.InitAuthTokenManager(tvwsclient.NewTVHttpClient("https://www.tradingview.com", deviceToken, sessionID, sessionSign))
+
 	// Initialize TradingView WebSocket client
-	tvClient, err := tvwsclient.NewClient(cfg.TradingView.AuthToken)
+	tvClient, err := tvwsclient.NewClient()
 	if err != nil {
 		slog.Error("failed to create TradingView client", "error", err)
 		os.Exit(1)
