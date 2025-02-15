@@ -12,6 +12,7 @@ import (
 type AuthTokenManager struct {
 	authToken string
 	mu        sync.RWMutex
+	client    *TVHttpClient
 }
 
 var (
@@ -19,11 +20,24 @@ var (
 	once     sync.Once
 )
 
+func InitAuthTokenManager(client *TVHttpClient) {
+	once.Do(func() {
+		instance = &AuthTokenManager{
+			client: client,
+		}
+		token, err := instance.client.GetQuoteToken()
+		if err != nil {
+			panic(err)
+		}
+		instance.SetToken(token)
+	})
+}
+
 // GetAuthTokenManager returns the singleton instance of AuthTokenManager
 func GetAuthTokenManager() *AuthTokenManager {
-	once.Do(func() {
-		instance = &AuthTokenManager{}
-	})
+	if instance == nil {
+		panic("AuthTokenManager not initialized")
+	}
 	return instance
 }
 
@@ -38,6 +52,13 @@ func (m *AuthTokenManager) SetToken(token string) {
 func (m *AuthTokenManager) GetToken() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if m.authToken == "" || m.CheckAuthTokenExpired() {
+		token, err := m.client.GetQuoteToken()
+		if err != nil {
+			panic(err)
+		}
+		m.SetToken(token)
+	}
 	return m.authToken
 }
 
@@ -63,5 +84,5 @@ func (m *AuthTokenManager) CheckAuthTokenExpired() bool {
 	}
 
 	// Check if token is expired
-	return time.Now().Unix() >= claims.Exp
+	return time.Now().Add(-5*time.Minute).Unix() >= claims.Exp
 }

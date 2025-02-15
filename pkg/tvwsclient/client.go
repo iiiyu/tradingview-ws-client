@@ -19,7 +19,6 @@ type Client struct {
 	mu            sync.Mutex // protects ws
 	requestHeader http.Header
 	wsURL         string
-	validateURL   string
 	authToken     string
 	maxRetries    int
 	done          chan struct{} // Channel to signal connection close
@@ -37,7 +36,6 @@ func NewClient(authToken string, options ...Option) (*Client, error) {
 	client := &Client{
 		requestHeader: defaultHeaders(),
 		wsURL:         "wss://prodata.tradingview.com/socket.io/websocket?from=screener%2F",
-		validateURL:   "https://scanner.tradingview.com/symbol?symbol=%s%%3A%s&fields=market&no_404=false",
 		authToken:     authToken,
 		maxRetries:    5,
 		done:          make(chan struct{}),
