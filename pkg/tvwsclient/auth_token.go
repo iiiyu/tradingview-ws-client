@@ -3,6 +3,7 @@ package tvwsclient
 import (
 	"encoding/base64"
 	"encoding/json"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -50,14 +51,27 @@ func (m *AuthTokenManager) SetToken(token string) {
 
 // GetToken returns the current auth token, checking if it needs to be updated
 func (m *AuthTokenManager) GetToken() string {
+	// First check with read lock
 	m.mu.RLock()
-	defer m.mu.RUnlock()
+	if m.authToken != "" && !m.CheckAuthTokenExpired() {
+		token := m.authToken
+		m.mu.RUnlock()
+		return token
+	}
+	m.mu.RUnlock()
+
+	// If token is empty or expired, acquire write lock
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Double-check condition after acquiring write lock
 	if m.authToken == "" || m.CheckAuthTokenExpired() {
 		token, err := m.client.GetQuoteToken()
 		if err != nil {
+			slog.Error("Failed to get quote token", "error", err)
 			panic(err)
 		}
-		m.SetToken(token)
+		m.authToken = token // Direct assignment since we already have the write lock
 	}
 	return m.authToken
 }
