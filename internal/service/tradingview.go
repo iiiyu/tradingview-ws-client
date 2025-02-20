@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/iiiyu/tradingview-ws-client/ent"
@@ -27,6 +26,10 @@ type CachedQuoteData struct {
 	LastPrice float64 `json:"lp"`
 	Timestamp int64   `json:"lp_time"`
 	Volume    float64 `json:"volume"`
+	Bid       float64 `json:"bid"`
+	Ask       float64 `json:"ask"`
+	BidSize   int     `json:"bid_size"`
+	AskSize   int     `json:"ask_size"`
 }
 
 func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, cache *ristretto.Cache) *TradingViewService {
@@ -39,18 +42,18 @@ func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, ca
 	service.readTradingViewMessage()
 
 	// Start periodic reconnection in a separate goroutine
-	go func() {
-		ticker := time.NewTicker(3 * time.Minute)
-		defer ticker.Stop()
+	// go func() {
+	// 	ticker := time.NewTicker(3 * time.Minute)
+	// 	defer ticker.Stop()
 
-		for range ticker.C {
-			if err := service.ReconnectTVClient(); err != nil {
-				slog.Error("failed to reconnect TradingView client", "error", err)
-			} else {
-				slog.Info("successfully reconnected TradingView client")
-			}
-		}
-	}()
+	// 	for range ticker.C {
+	// 		if err := service.ReconnectTVClient(); err != nil {
+	// 			slog.Error("failed to reconnect TradingView client", "error", err)
+	// 		} else {
+	// 			slog.Info("successfully reconnected TradingView client")
+	// 		}
+	// 	}
+	// }()
 
 	return service
 }
@@ -84,12 +87,26 @@ func (s *TradingViewService) readTradingViewMessage() {
 		for {
 			select {
 			case <-ctx.Done():
+				slog.Error("ctx.Done()")
 				return
 			case data, ok := <-dataChan:
 				if !ok {
+					slog.Error("dataChan closed", "data", data, "ok", ok)
 					return
 				}
+				slog.Debug("Received message", "method", data)
 				switch data.Method {
+				case tvwsclient.MethodQuoteCompleted:
+					quoteCompletedMessage, err := tvwsclient.NewQuoteCompletedMessage(data.Params)
+					if err != nil {
+						slog.Error("failed to parse quote completed", "error", err)
+						continue
+					}
+
+					if err := tvwsclient.SendQuoteFastSymbolsMessage(s.tvClient, quoteCompletedMessage.SessionID, quoteCompletedMessage.Symbol); err != nil {
+						slog.Error("failed to send quote fast symbols", "error", err)
+					}
+
 				case tvwsclient.MethodQuoteData:
 					quoteDataMessage, err := tvwsclient.NewQuoteDataMessage(data.Params)
 					if err != nil {
@@ -298,6 +315,7 @@ func (s *TradingViewService) ProcessDataUpdate(msg *tvwsclient.DuMessage) error 
 }
 
 func (s *TradingViewService) ProcessQuoteData(msg *tvwsclient.QuoteDataMessage) error {
+	slog.Debug("ProcessQuoteData", "msg", msg)
 	// Extract symbol name from the message
 	symbolName := msg.Data.Name
 
@@ -326,6 +344,18 @@ func (s *TradingViewService) ProcessQuoteData(msg *tvwsclient.QuoteDataMessage) 
 	}
 	if msg.Data.Values.Volume != 0 {
 		cachedData.Volume = msg.Data.Values.Volume
+	}
+	if msg.Data.Values.Bid != 0 {
+		cachedData.Bid = msg.Data.Values.Bid
+	}
+	if msg.Data.Values.Ask != 0 {
+		cachedData.Ask = msg.Data.Values.Ask
+	}
+	if msg.Data.Values.BidSize != 0 {
+		cachedData.BidSize = msg.Data.Values.BidSize
+	}
+	if msg.Data.Values.AskSize != 0 {
+		cachedData.AskSize = msg.Data.Values.AskSize
 	}
 
 	// Set the data in cache

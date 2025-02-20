@@ -16,6 +16,7 @@ const (
 	MethodTimescaleUpdate = "timescale_update"
 	MethodSeriesCompleted = "series_completed"
 	MethodDataUpdate      = "du"
+	MethodQuoteCompleted  = "quote_completed"
 )
 
 // TVResponse represents the top-level response structure
@@ -103,6 +104,13 @@ type SymbolData struct {
 
 	// Trading sessions
 	Subsessions []SubsessionInfo `json:"subsessions,omitempty"`
+
+	// Trade loaded - real time data
+	TradeLoaded bool    `json:"trade_loaded,omitempty"`
+	BidSize     int     `json:"bid_size,omitempty"`
+	Bid         float64 `json:"bid,omitempty"`
+	AskSize     int     `json:"ask_size,omitempty"`
+	Ask         float64 `json:"ask,omitempty"`
 }
 
 // SeriesLoadingMessage represents the series_loading message
@@ -271,6 +279,27 @@ type DuData struct {
 type DuSeriesData struct {
 	I int       `json:"i"` // Index
 	V []float64 `json:"v"` // [timestamp, open, high, low, close, volume]
+}
+
+func NewQuoteCompletedMessage(params []interface{}) (*QuoteCompletedMessage, error) {
+	if len(params) < 2 {
+		return nil, fmt.Errorf("insufficient parameters")
+	}
+
+	sessionID, ok := params[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid session ID type")
+	}
+
+	symbol, ok := params[1].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid symbol type")
+	}
+
+	return &QuoteCompletedMessage{
+		SessionID: sessionID,
+		Symbol:    symbol,
+	}, nil
 }
 
 func NewQuoteDataMessage(params []interface{}) (*QuoteDataMessage, error) {

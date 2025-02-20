@@ -197,6 +197,7 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 		_, message, err := ws.ReadMessage()
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				slog.Error("connection closed", "error", err)
 				return nil
 			}
 
@@ -259,6 +260,7 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 				select {
 				case dataChan <- response:
 				case <-c.done:
+					slog.Error("dataChan closed", "response", response)
 					return nil
 				}
 			}

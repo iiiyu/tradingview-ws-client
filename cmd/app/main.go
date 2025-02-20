@@ -74,58 +74,6 @@ func main() {
 	// Initialize service
 	tvService := service.NewTradingViewService(entClient, tvClient, cache)
 
-	// // Create data channel for receiving updates
-	// dataChan := make(chan tvwsclient.TVResponse)
-
-	// // Start receiving data in a goroutine
-	// go func() {
-	// 	if err := tvClient.ReadMessage(dataChan); err != nil {
-	// 		slog.Error("failed to read messages", "error", err)
-	// 	}
-	// }()
-
-	// // Process incoming data
-	// go func() {
-	// 	for data := range dataChan {
-	// 		switch data.Method {
-	// 		case tvwsclient.MethodQuoteData:
-	// 			quoteDataMessage, err := tvwsclient.NewQuoteDataMessage(data.Params)
-	// 			if err != nil {
-	// 				slog.Error("failed to parse quote data", "error", err)
-	// 				continue
-	// 			}
-
-	// 			if err := tvService.ProcessQuoteData(quoteDataMessage); err != nil {
-	// 				slog.Error("failed to process quote data", "error", err)
-	// 			}
-
-	// 			// slog.Debug("received quote data", "data", quoteDataMessage)
-
-	// 		case tvwsclient.MethodTimescaleUpdate:
-	// 			timescaleUpdateMessage, err := tvwsclient.NewTimescaleUpdateMessage(data.Params)
-	// 			if err != nil {
-	// 				slog.Error("failed to parse timescale update", "error", err)
-	// 				continue
-	// 			}
-
-	// 			if err := tvService.ProcessTimescaleUpdate(timescaleUpdateMessage); err != nil {
-	// 				slog.Error("failed to process timescale update", "error", err)
-	// 			}
-
-	// 		case tvwsclient.MethodDataUpdate:
-	// 			duMessage, err := tvwsclient.NewDuMessage(data.Params)
-	// 			if err != nil {
-	// 				slog.Error("failed to parse data update", "error", err)
-	// 				continue
-	// 			}
-
-	// 			if err := tvService.ProcessDataUpdate(duMessage); err != nil {
-	// 				slog.Error("failed to process data update", "error", err)
-	// 			}
-	// 		}
-	// 	}
-	// }()
-
 	// Initialize Fiber app and handlers
 	app := fiber.New(fiber.Config{
 		AppName: "TradingView Data Service",

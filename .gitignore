@@ -44,3 +44,5 @@ config.yaml
 __debug_bin*
 
 cmd/something/*
+
+*.txt
