@@ -17,10 +17,11 @@ const defaultQuoteFields = "base-currency-logoid,ch,chp,currency-logoid,currency
 	"unit_id,measure"
 
 const (
-	OnlySymbol     = "only_symbol"
-	LessParameters = "less_parameters"
-	MoreParameters = "more_parameters"
-	MostParameters = "most_parameters"
+	OnlySymbol       = "only_symbol"
+	LessParameters   = "less_parameters"
+	MediumParameters = "medium_parameters"
+	MoreParameters   = "more_parameters"
+	MostParameters   = "most_parameters"
 )
 
 // sendWSMessage is a helper function that handles the common pattern of sending websocket messages
@@ -163,9 +164,9 @@ func SubscriptionQuoteSessionSymbol(client *Client, session string, symbol strin
 		return err
 	}
 
-	if err := SendQuoteSetFieldsMessage(client, session); err != nil {
-		return err
-	}
+	// if err := SendQuoteSetFieldsMessage(client, session); err != nil {
+	// 	return err
+	// }
 
 	if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, MoreParameters); err != nil {
 		return err
@@ -175,7 +176,7 @@ func SubscriptionQuoteSessionSymbol(client *Client, session string, symbol strin
 		return err
 	}
 
-	if err := SendQuoteFastSymbolsMessage(client, session, symbol); err != nil {
+	if err := SendQuoteFastSymbolsMessageWithType(client, session, symbol, LessParameters); err != nil {
 		return err
 	}
 
@@ -183,9 +184,25 @@ func SubscriptionQuoteSessionSymbol(client *Client, session string, symbol strin
 		return err
 	}
 
-	if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, OnlySymbol); err != nil {
+	if err := SendQuoteFastSymbolsMessageWithType(client, session, symbol, MoreParameters); err != nil {
 		return err
 	}
+
+	// if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, MediumParameters); err != nil {
+	// 	return err
+	// }
+
+	// if err := SendQuoteFastSymbolsMessageWithType(client, session, symbol, MostParameters); err != nil {
+	// 	return err
+	// }
+
+	// if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, OnlySymbol); err != nil {
+	// 	return err
+	// }
+
+	// if err := SendQuoteFastSymbolsMessageWithType(client, session, symbol, MediumParameters); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
