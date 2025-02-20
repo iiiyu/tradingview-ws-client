@@ -30,6 +30,14 @@ type CachedQuoteData struct {
 	Ask       float64 `json:"ask"`
 	BidSize   int     `json:"bid_size"`
 	AskSize   int     `json:"ask_size"`
+	// RCH (Regular Change): The absolute price change during regular trading hours
+	RCH float64 `json:"rch,omitempty"`
+	// RCHP (Regular Change Percentage): The percentage change during regular trading hours
+	RCHP float64 `json:"rchp,omitempty"`
+	// RTC (Real-Time Close): The current/latest closing price in real-time
+	RTC float64 `json:"rtc,omitempty"`
+	// RTC_Time: The timestamp of the latest real-time close price
+	RTC_Time int64 `json:"rtc_time,omitempty"`
 }
 
 func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, cache *ristretto.Cache) *TradingViewService {
@@ -97,15 +105,20 @@ func (s *TradingViewService) readTradingViewMessage() {
 				slog.Debug("Received message", "method", data)
 				switch data.Method {
 				case tvwsclient.MethodQuoteCompleted:
-					quoteCompletedMessage, err := tvwsclient.NewQuoteCompletedMessage(data.Params)
-					if err != nil {
-						slog.Error("failed to parse quote completed", "error", err)
-						continue
-					}
+					// quoteCompletedMessage, err := tvwsclient.NewQuoteCompletedMessage(data.Params)
+					// if err != nil {
+					// 	slog.Error("failed to parse quote completed", "error", err)
+					// 	continue
+					// }
 
-					if err := tvwsclient.SendQuoteCompletedMessageAfterQuoteCompleted(s.tvClient, quoteCompletedMessage.SessionID, quoteCompletedMessage.ReceivedMessage); err != nil {
-						slog.Error("failed to send quote completed message after quote completed", "error", err)
-					}
+					// if err := tvwsclient.SendQuoteCompletedMessageAfterQuoteCompleted(s.tvClient, quoteCompletedMessage.SessionID, quoteCompletedMessage.ReceivedMessage); err != nil {
+					// 	slog.Error("failed to send quote completed message after quote completed", "error", err)
+					// }
+
+					// session := tvwsclient.GenerateSession("qs_")
+					// if err := tvwsclient.SubscriptionQuoteSessionSymbol(s.tvClient, session, quoteCompletedMessage.ReceivedMessage); err != nil {
+					// 	slog.Error("failed to subscribe to quote session symbol", "error", err)
+					// }
 
 				case tvwsclient.MethodQuoteData:
 					quoteDataMessage, err := tvwsclient.NewQuoteDataMessage(data.Params)
@@ -356,6 +369,20 @@ func (s *TradingViewService) ProcessQuoteData(msg *tvwsclient.QuoteDataMessage) 
 	}
 	if msg.Data.Values.AskSize != 0 {
 		cachedData.AskSize = msg.Data.Values.AskSize
+	}
+
+	// real-time close price
+	if msg.Data.Values.RCH != 0 {
+		cachedData.RCH = msg.Data.Values.RCH
+	}
+	if msg.Data.Values.RCHP != 0 {
+		cachedData.RCHP = msg.Data.Values.RCHP
+	}
+	if msg.Data.Values.RTC != 0 {
+		cachedData.RTC = msg.Data.Values.RTC
+	}
+	if msg.Data.Values.RTC_Time != 0 {
+		cachedData.RTC_Time = msg.Data.Values.RTC_Time
 	}
 
 	// Set the data in cache

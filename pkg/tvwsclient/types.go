@@ -74,7 +74,6 @@ type SymbolData struct {
 	ValueUnitID         string   `json:"value_unit_id,omitempty"`
 	UnitID              string   `json:"unit_id,omitempty"`
 	Measure             string   `json:"measure,omitempty"`
-	RTCTime             int64    `json:"rtc_time,omitempty"`
 	RegularCloseTime    int64    `json:"regular_close_time,omitempty"`
 	OpenTime            int64    `json:"open_time,omitempty"`
 	RegularClose        float64  `json:"regular_close,omitempty"`
@@ -111,6 +110,15 @@ type SymbolData struct {
 	Bid         float64 `json:"bid,omitempty"`
 	AskSize     int     `json:"ask_size,omitempty"`
 	Ask         float64 `json:"ask,omitempty"`
+
+	// RCH (Regular Change): The absolute price change during regular trading hours
+	RCH float64 `json:"rch,omitempty"`
+	// RCHP (Regular Change Percentage): The percentage change during regular trading hours
+	RCHP float64 `json:"rchp,omitempty"`
+	// RTC (Real-Time Close): The current/latest closing price in real-time
+	RTC float64 `json:"rtc,omitempty"`
+	// RTC_Time: The timestamp of the latest real-time close price
+	RTC_Time int64 `json:"rtc_time,omitempty"`
 }
 
 // SeriesLoadingMessage represents the series_loading message
