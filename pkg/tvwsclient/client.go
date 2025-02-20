@@ -1,6 +1,7 @@
 package tvwsclient
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Add a new ConnectionState type for better state management
+type ConnectionState int
+
+const (
+	StateDisconnected ConnectionState = iota
+	StateConnecting
+	StateConnected
+)
+
 // Client represents a TradingView WebSocket client
 type Client struct {
 	ws            *websocket.Conn
@@ -21,11 +31,11 @@ type Client struct {
 	wsURL         string
 	maxRetries    int
 	done          chan struct{} // Channel to signal connection close
-	reconnecting  bool          // Flag to indicate reconnection in progress
 	pingInterval  time.Duration // Interval for sending ping messages
 	writeTimeout  time.Duration // Timeout for write operations
 	readTimeout   time.Duration // Timeout for read operations
-	isConnected   bool
+	state         ConnectionState
+	cancel        context.CancelFunc
 }
 
 var heartbeatRegex = regexp.MustCompile(`~h~\d+`)
@@ -73,18 +83,16 @@ func (c *Client) connect() error {
 
 	conn, _, err := dialer.Dial(c.wsURL, c.requestHeader)
 	if err != nil {
-		c.isConnected = false
 		return fmt.Errorf("failed to connect to WebSocket: %w", err)
 	}
 
 	c.ws = conn
-	c.isConnected = true
 
 	// Setup ping handler to respond to server pings
 	c.ws.SetPingHandler(func(appData string) error {
 		c.mu.Lock()
 		defer c.mu.Unlock()
-		if !c.isConnected || c.ws == nil {
+		if c.ws == nil {
 			return fmt.Errorf("connection is closed")
 		}
 		return c.ws.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(10*time.Second))
@@ -102,7 +110,7 @@ func (c *Client) pingHandler() {
 		select {
 		case <-ticker.C:
 			c.mu.Lock()
-			if !c.isConnected || c.ws == nil {
+			if c.ws == nil {
 				c.mu.Unlock()
 				continue
 			}
@@ -124,15 +132,9 @@ func (c *Client) pingHandler() {
 // reconnect attempts to reconnect to the WebSocket server
 func (c *Client) reconnect() error {
 	c.mu.Lock()
-	if c.reconnecting {
+	if c.ws == nil {
 		c.mu.Unlock()
-		return nil // Already reconnecting
-	}
-	c.reconnecting = true
-	c.isConnected = false
-	if c.ws != nil {
-		c.ws.Close()
-		c.ws = nil
+		return nil // Already disconnected
 	}
 	c.mu.Unlock()
 
@@ -140,10 +142,6 @@ func (c *Client) reconnect() error {
 	time.Sleep(time.Second)
 
 	err := c.connect()
-
-	c.mu.Lock()
-	c.reconnecting = false
-	c.mu.Unlock()
 
 	return err
 }
@@ -171,7 +169,7 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 	retries := 0
 	for {
 		c.mu.Lock()
-		if !c.isConnected || c.ws == nil {
+		if c.ws == nil {
 			c.mu.Unlock()
 			if retries < c.maxRetries {
 				retries++
@@ -231,7 +229,7 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 		// Handle heartbeat messages
 		if heartbeatRegex.Match(message) {
 			c.mu.Lock()
-			if !c.isConnected || c.ws == nil {
+			if c.ws == nil {
 				c.mu.Unlock()
 				continue
 			}
@@ -270,18 +268,25 @@ func (c *Client) ReadMessage(dataChan chan<- TVResponse) error {
 
 // Close closes the WebSocket connection and stops the ping handler
 func (c *Client) Close() error {
-	select {
-	case <-c.done:
-		return nil
-	default:
-		close(c.done)
-	}
+	c.cancel() // Cancel context
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.isConnected = false
+	if c.state == StateDisconnected {
+		return nil
+	}
+
+	c.state = StateDisconnected
 	if c.ws != nil {
+		if err := c.ws.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+			time.Now().Add(time.Second),
+		); err != nil {
+			slog.Error("error sending close message", "error", err)
+		}
+
 		err := c.ws.Close()
 		c.ws = nil
 		return err
