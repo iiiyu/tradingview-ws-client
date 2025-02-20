@@ -16,6 +16,13 @@ const defaultQuoteFields = "base-currency-logoid,ch,chp,currency-logoid,currency
 	"pro_name,short_name,type,typespecs,update_mode,volume,variable_tick_size,value_unit_id," +
 	"unit_id,measure"
 
+const (
+	OnlySymbol     = "only_symbol"
+	LessParameters = "less_parameters"
+	MoreParameters = "more_parameters"
+	MostParameters = "most_parameters"
+)
+
 // sendWSMessage is a helper function that handles the common pattern of sending websocket messages
 func sendWSMessage(ws *websocket.Conn, message string, operation string) error {
 	wrappedMsg := wrappedMessage(message)
@@ -106,44 +113,6 @@ func SendQuoteSetFieldsMessage(c *Client, session string) error {
 	return sendWSMessage(c.ws, message, "quote set fields message")
 }
 
-func SendQuoteAddSymbolsMessage(c *Client, session string, symbols []string) error {
-	message := fmt.Sprintf(`{"m":"quote_add_symbols","p":["%s","%s"]}`,
-		session,
-		strings.Join(symbols, `","`),
-	)
-	return sendWSMessage(c.ws, message, "quote add symbols message")
-}
-
-func SendQuoteFastSymbolsMessage(c *Client, session string, symbol string) error {
-	// Transform symbols into required format with both regular and extended sessions
-	// formattedSymbols := make([]string, len(symbols)*2)
-	// for i, symbol := range symbols {
-	// 	// Regular session format
-	// 	formattedSymbols[i*2] = fmt.Sprintf(`={"adjustment":"dividends","backadjustment":"default","symbol":"%s"}`, symbol)
-	// 	// Extended session format
-	// 	formattedSymbols[i*2+1] = fmt.Sprintf(`={"adjustment":"dividends","backadjustment":"default","session":"extended","symbol":"%s"}`, symbol)
-	// }
-
-	// var formattedSymbolsString string
-	// for i, formattedString := range formattedSymbols {
-	// 	if i > 0 {
-	// 		formattedSymbolsString += `","`
-	// 	}
-	// 	formattedSymbolsString += formattedString
-	// }
-	message := fmt.Sprintf(`{"m":"quote_fast_symbols","p":["%s","={\"adjustment\":\"dividends\",\"backadjustment\":\"default\",\"symbol\":\"%s\"}","%s","={\"adjustment\":\"dividends\",\"backadjustment\":\"default\",\"session\":\"extended\",\"symbol\":\"%s\"}"]}`,
-		session,
-		symbol,
-		symbol,
-		symbol,
-	)
-	// message := fmt.Sprintf(`{"m":"quote_fast_symbols","p":["%s","%s"]}`,
-	// 	session,
-	// 	symbol,
-	// )
-	return sendWSMessage(c.ws, message, "quote fast symbols message")
-}
-
 // func SendQuoteFastSymbolsMessage(c *Client, session string, symbols []string) error {
 // 	// Transform symbols into required format with both regular and extended sessions
 // 	formattedSymbols := make([]string, len(symbols)*2)
@@ -178,6 +147,10 @@ func SendQuoteRemoveSymbolsMessage(c *Client, session string, symbols []string) 
 }
 
 func SendQuoteCompletedMessageAfterQuoteCompleted(c *Client, session string, receivedMessage string) error {
+	// Replace single backslash + quote with triple backslash + quote
+	receivedMessage = strings.ReplaceAll(receivedMessage, `\`, `\\`)
+	// Replace remaining quotes with escaped quotes
+	receivedMessage = strings.ReplaceAll(receivedMessage, `"`, `\"`)
 	message := fmt.Sprintf(`{"m":"quote_remove_symbols","p":["%s","%s"]}`,
 		session,
 		receivedMessage,
@@ -194,11 +167,23 @@ func SubscriptionQuoteSessionSymbol(client *Client, session string, symbol strin
 		return err
 	}
 
-	if err := SendQuoteAddSymbolsMessage(client, session, []string{symbol}); err != nil {
+	if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, MoreParameters); err != nil {
+		return err
+	}
+
+	if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, LessParameters); err != nil {
 		return err
 	}
 
 	if err := SendQuoteFastSymbolsMessage(client, session, symbol); err != nil {
+		return err
+	}
+
+	if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, MostParameters); err != nil {
+		return err
+	}
+
+	if err := SendQuoteAddSymbolsMessageWithType(client, session, symbol, OnlySymbol); err != nil {
 		return err
 	}
 
