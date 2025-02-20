@@ -103,8 +103,8 @@ func (s *TradingViewService) readTradingViewMessage() {
 						continue
 					}
 
-					if err := tvwsclient.SendQuoteFastSymbolsMessage(s.tvClient, quoteCompletedMessage.SessionID, quoteCompletedMessage.Symbol); err != nil {
-						slog.Error("failed to send quote fast symbols", "error", err)
+					if err := tvwsclient.SendQuoteCompletedMessageAfterQuoteCompleted(s.tvClient, quoteCompletedMessage.SessionID, quoteCompletedMessage.ReceivedMessage); err != nil {
+						slog.Error("failed to send quote completed message after quote completed", "error", err)
 					}
 
 				case tvwsclient.MethodQuoteData:
@@ -315,7 +315,7 @@ func (s *TradingViewService) ProcessDataUpdate(msg *tvwsclient.DuMessage) error 
 }
 
 func (s *TradingViewService) ProcessQuoteData(msg *tvwsclient.QuoteDataMessage) error {
-	slog.Debug("ProcessQuoteData", "msg", msg)
+	// slog.Debug("ProcessQuoteData", "msg", msg)
 	// Extract symbol name from the message
 	symbolName := msg.Data.Name
 

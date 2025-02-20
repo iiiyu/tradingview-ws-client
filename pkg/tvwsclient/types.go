@@ -241,8 +241,8 @@ type TimescaleUpdateData struct {
 
 // QuoteCompletedMessage represents the quote_completed message
 type QuoteCompletedMessage struct {
-	SessionID string
-	Symbol    string
+	SessionID       string
+	ReceivedMessage string
 }
 
 // SeriesCompletedMessage represents the series_completed message
@@ -291,14 +291,14 @@ func NewQuoteCompletedMessage(params []interface{}) (*QuoteCompletedMessage, err
 		return nil, fmt.Errorf("invalid session ID type")
 	}
 
-	symbol, ok := params[1].(string)
+	receivedMessage, ok := params[1].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid symbol type")
 	}
 
 	return &QuoteCompletedMessage{
-		SessionID: sessionID,
-		Symbol:    symbol,
+		SessionID:       sessionID,
+		ReceivedMessage: receivedMessage,
 	}, nil
 }
 

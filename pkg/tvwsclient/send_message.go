@@ -177,6 +177,14 @@ func SendQuoteRemoveSymbolsMessage(c *Client, session string, symbols []string) 
 	return sendWSMessage(c.ws, message, "quote remove symbols message")
 }
 
+func SendQuoteCompletedMessageAfterQuoteCompleted(c *Client, session string, receivedMessage string) error {
+	message := fmt.Sprintf(`{"m":"quote_remove_symbols","p":["%s","%s"]}`,
+		session,
+		receivedMessage,
+	)
+	return sendWSMessage(c.ws, message, "remove quote message after quote completed message")
+}
+
 func SubscriptionQuoteSessionSymbol(client *Client, session string, symbol string) error {
 	if err := SendQuoteCreateSessionMessage(client, session); err != nil {
 		return err
