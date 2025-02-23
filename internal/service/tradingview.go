@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/iiiyu/tradingview-ws-client/ent"
@@ -49,19 +50,20 @@ func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, ca
 
 	service.readTradingViewMessage()
 
-	// Start periodic reconnection in a separate goroutine
-	// go func() {
-	// 	ticker := time.NewTicker(3 * time.Minute)
-	// 	defer ticker.Stop()
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
 
-	// 	for range ticker.C {
-	// 		if err := service.ReconnectTVClient(); err != nil {
-	// 			slog.Error("failed to reconnect TradingView client", "error", err)
-	// 		} else {
-	// 			slog.Info("successfully reconnected TradingView client")
-	// 		}
-	// 	}
-	// }()
+		for {
+			<-ticker.C
+			if tvwsclient.GetAuthTokenManager().CheckAuthTokenExpired() {
+				slog.Info("auth token expired, reconnecting TradingView client")
+				if err := service.ReconnectTVClient(); err != nil {
+					slog.Error("failed to reconnect TradingView client", "error", err)
+				}
+			}
+		}
+	}()
 
 	return service
 }
@@ -105,6 +107,7 @@ func (s *TradingViewService) readTradingViewMessage() {
 				slog.Debug("Received message", "method", data)
 				switch data.Method {
 				case tvwsclient.MethodQuoteCompleted:
+					slog.Debug("MethodQuoteCompleted", "data", data)
 					// quoteCompletedMessage, err := tvwsclient.NewQuoteCompletedMessage(data.Params)
 					// if err != nil {
 					// 	slog.Error("failed to parse quote completed", "error", err)
