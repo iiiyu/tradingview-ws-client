@@ -23,22 +23,18 @@ type TradingViewService struct {
 }
 type CachedQuoteData struct {
 	Name      string  `json:"name"`
-	Change    float64 `json:"ch"`
-	LastPrice float64 `json:"lp"`
-	Timestamp int64   `json:"lp_time"`
-	Volume    float64 `json:"volume"`
-	Bid       float64 `json:"bid"`
-	Ask       float64 `json:"ask"`
-	BidSize   int     `json:"bid_size"`
-	AskSize   int     `json:"ask_size"`
-	// RCH (Regular Change): The absolute price change during regular trading hours
-	RCH float64 `json:"rch,omitempty"`
-	// RCHP (Regular Change Percentage): The percentage change during regular trading hours
-	RCHP float64 `json:"rchp,omitempty"`
-	// RTC (Real-Time Close): The current/latest closing price in real-time
-	RTC float64 `json:"rtc,omitempty"`
-	// RTC_Time: The timestamp of the latest real-time close price
-	RTC_Time int64 `json:"rtc_time,omitempty"`
+	Change    float64 `json:"ch,omitempty"`
+	LastPrice float64 `json:"lp,omitempty"`
+	Timestamp int64   `json:"lp_time,omitempty"`
+	Volume    float64 `json:"volume,omitempty"`
+	Bid       float64 `json:"bid,omitempty"`
+	Ask       float64 `json:"ask,omitempty"`
+	BidSize   float64 `json:"bid_size,omitempty"`
+	AskSize   float64 `json:"ask_size,omitempty"`
+	RCH       float64 `json:"rch,omitempty"`      // RCH (Regular Change): The absolute price change during regular trading hours
+	RCHP      float64 `json:"rchp,omitempty"`     // RCHP (Regular Change Percentage): The percentage change during regular trading hours
+	RTC       float64 `json:"rtc,omitempty"`      // RTC (Real-Time Close): The current/latest closing price in real-time
+	RTC_Time  int64   `json:"rtc_time,omitempty"` // RTC_Time: The timestamp of the latest real-time close price
 }
 
 func NewTradingViewService(dbClient *ent.Client, tvClient *tvwsclient.Client, cache *ristretto.Cache) *TradingViewService {

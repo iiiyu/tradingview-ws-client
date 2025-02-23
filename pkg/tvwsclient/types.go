@@ -106,9 +106,9 @@ type SymbolData struct {
 
 	// Trade loaded - real time data
 	TradeLoaded bool    `json:"trade_loaded,omitempty"`
-	BidSize     int     `json:"bid_size,omitempty"`
+	BidSize     float64 `json:"bid_size,omitempty"`
 	Bid         float64 `json:"bid,omitempty"`
-	AskSize     int     `json:"ask_size,omitempty"`
+	AskSize     float64 `json:"ask_size,omitempty"`
 	Ask         float64 `json:"ask,omitempty"`
 
 	// RCH (Regular Change): The absolute price change during regular trading hours
