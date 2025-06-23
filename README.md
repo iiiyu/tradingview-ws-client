@@ -318,7 +318,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Related Projects
 
-- [TradingView HTTP Service](https://github.com/iiiyu/tradingview-http-service) - HTTP API service using this WebSocket client
+- [MarketStream](https://github.com/iiiyu/marketstream) - HTTP API service using this WebSocket client
 
 ## 🆘 Support
 
